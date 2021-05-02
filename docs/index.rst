@@ -13,6 +13,7 @@
    topics/typesys
    topics/serde
    topics/rosbag2
+   topics/rosbag1
 
 
 .. toctree::
