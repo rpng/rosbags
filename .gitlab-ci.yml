@@ -1,0 +1,46 @@
+stages:
+  - test
+  - build
+
+
+test:
+  stage: test
+  image: python:3.8
+  script:
+    - python3.8 -m venv venv
+    - venv/bin/python -m pip install -r requirements-dev.txt
+    - venv/bin/python -m pip install -e .[dev]
+    - venv/bin/python -m pytest
+    - venv/bin/python -m coverage xml
+    - venv/bin/sphinx-build docs public
+  coverage: '/\d+\%\s*$/'
+  artifacts:
+    paths:
+      - public
+    reports:
+      cobertura: coverage.xml
+      junit: report.xml
+
+
+build:
+  stage: build
+  image: python:3.8
+  script:
+    - python3.8 -m venv venv
+    - venv/bin/python -m pip install build
+    - venv/bin/python -m build .
+  artifacts:
+    paths:
+      - dist
+
+
+pages:
+  stage: build
+  image: python:3.8
+  script:
+    - ls public
+  artifacts:
+    paths:
+      - public
+  only:
+    - master
