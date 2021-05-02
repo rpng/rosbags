@@ -11,6 +11,7 @@
    :hidden:
 
    topics/typesys
+   topics/serde
 
 
 .. toctree::
