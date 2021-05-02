@@ -14,6 +14,7 @@
    topics/serde
    topics/rosbag2
    topics/rosbag1
+   topics/convert
 
 
 .. toctree::
