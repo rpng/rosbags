@@ -32,6 +32,20 @@ Rosbags is published on PyPI and does not have any special dependencies. Simply 
    pip install rosbags
 
 
+Read and deserialize rosbag2 messages:
+
+.. code-block:: python
+
+   from rosbags.rosbag2 import Reader
+   from rosbags.serde import deserialize_cdr
+
+   # create reader instance and open for reading
+   with Reader('/home/ros/rosbag_2020_03_24') as reader:
+       for topic, msgtype, timestamp, rawdata in reader.messages(['/imu_raw/Imu']):
+            msg = deserialize_cdr(rawdata, msgtype)
+            print(msg.header.frame_id)
+
+
 
 Documentation
 =============

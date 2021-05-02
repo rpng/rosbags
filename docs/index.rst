@@ -12,6 +12,7 @@
 
    topics/typesys
    topics/serde
+   topics/rosbag2
 
 
 .. toctree::
