@@ -18,10 +18,10 @@ Instances of the :py:class:`Reader <rosbags.rosbag2.Reader>` class are typically
            print(topic, info)
 
        # iterate over messages
-       for topic, msgtype, rawdata, timestamp in reader.messages():
+       for topic, msgtype, timestamp, rawdata in reader.messages():
            if topic == '/imu_raw/Imu':
                print(timestamp)
 
        # messages() accepts topic filters
-       for topic, msgtype, rawdata, timestamp in reader.messages(['/imu_raw/Imu']):
+       for topic, msgtype, timestamp, rawdata in reader.messages(['/imu_raw/Imu']):
            print(timestamp)

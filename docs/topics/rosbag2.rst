@@ -60,6 +60,6 @@ Instances of the :py:class:`Reader <rosbags.rosbag2.Reader>` class are used to r
                print(msg.header.frame_id)
 
        # messages() accepts topic filters
-       for topic, msgtype, rawdata, timestamp in reader.messages(['/imu_raw/Imu']):
+       for topic, msgtype, timestamp, rawdata in reader.messages(['/imu_raw/Imu']):
            msg = deserialize_cdr(rawdata, msgtype)
            print(msg.header.frame_id)
