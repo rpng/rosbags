@@ -34,7 +34,8 @@ definition
   / type_dcl ';'
 
 comment
-  = r'[/][/][^\n]*'
+  = r'/\*.*?\*/'
+  / r'[/][/][^\n]*'
 
 macro
   = ifndef
