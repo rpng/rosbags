@@ -69,6 +69,8 @@ class Connection(NamedTuple):
     msgtype: str
     md5sum: str
     msgdef: str
+    callerid: Optional[str]
+    latching: Optional[int]
     indexes: List
 
 
@@ -490,7 +492,19 @@ class Reader:
         md5sum = header.get_string('md5sum')
         msgdef = header.get_string('message_definition')
 
-        return conn, Connection(conn, topic, normalize_msgtype(typ), md5sum, msgdef, [])
+        callerid = header.get_string('callerid') if 'callerid' in header else None
+        latching = int(header.get_string('latching')) if 'latching' in header else None
+
+        return conn, Connection(
+            conn,
+            topic,
+            normalize_msgtype(typ),
+            md5sum,
+            msgdef,
+            callerid,
+            latching,
+            [],
+        )
 
     def read_chunk_info(self) -> ChunkInfo:
         """Read chunk info record from current position."""
