@@ -15,6 +15,24 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Dict, Optional
 
+LATCH = """
+- history: 3
+  depth: 0
+  reliability: 1
+  durability: 1
+  deadline:
+    sec: 2147483647
+    nsec: 4294967295
+  lifespan:
+    sec: 2147483647
+    nsec: 4294967295
+  liveliness: 1
+  liveliness_lease_duration:
+    sec: 2147483647
+    nsec: 4294967295
+  avoid_ros_namespace_conventions: false
+""".strip()
+
 
 class ConverterError(Exception):
     """Converter Error."""
@@ -40,7 +58,14 @@ def convert(src: Path, dst: Optional[Path]) -> None:
         with Reader(src) as reader, Writer(dst) as writer:
             typs: Dict[str, Any] = {}
             for name, topic in reader.topics.items():
-                writer.add_topic(name, topic.msgtype)
+                connection = next(  # pragma: no branch
+                    x for x in reader.connections.values() if x.topic == name
+                )
+                writer.add_topic(
+                    name,
+                    topic.msgtype,
+                    offered_qos_profiles=LATCH if connection.latching else '',
+                )
                 typs.update(get_types_from_msg(topic.msgdef, topic.msgtype))
             register_types(typs)
 

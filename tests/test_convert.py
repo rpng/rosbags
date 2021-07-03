@@ -4,12 +4,13 @@
 
 import sys
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 import pytest
 
 from rosbags.convert import ConverterError, convert
 from rosbags.convert.__main__ import main
+from rosbags.convert.converter import LATCH
 from rosbags.rosbag1 import ReaderError
 from rosbags.rosbag2 import WriterError
 
@@ -75,11 +76,17 @@ def test_convert(tmp_path: Path):
          patch('rosbags.convert.converter.register_types') as register_types, \
          patch('rosbags.convert.converter.ros1_to_cdr') as ros1_to_cdr:
 
+        reader.return_value.__enter__.return_value.connections = {
+            0: Mock(topic='/topic', latching=False),
+            1: Mock(topic='/latched', latching=True),
+        }
         reader.return_value.__enter__.return_value.topics = {
             '/topic': Mock(msgtype='typ', msgdef='def'),
+            '/latched': Mock(msgtype='typ', msgdef='def'),
         }
         reader.return_value.__enter__.return_value.messages.return_value = [
             ('/topic', 'typ', 42, b'\x42'),
+            ('/latched', 'typ', 43, b'\x43'),
         ]
 
         ros1_to_cdr.return_value = b'666'
@@ -90,11 +97,18 @@ def test_convert(tmp_path: Path):
         reader.return_value.__enter__.return_value.messages.assert_called_with()
 
         writer.assert_called_with(Path('foo'))
-        writer.return_value.__enter__.return_value.add_topic.assert_called_with('/topic', 'typ')
-        writer.return_value.__enter__.return_value.write.assert_called_with('/topic', 42, b'666')
+        writer.return_value.__enter__.return_value.add_topic.assert_has_calls(
+            [
+                call('/topic', 'typ', offered_qos_profiles=''),
+                call('/latched', 'typ', offered_qos_profiles=LATCH),
+            ],
+        )
+        writer.return_value.__enter__.return_value.write.assert_has_calls(
+            [call('/topic', 42, b'666'), call('/latched', 43, b'666')],
+        )
 
         register_types.assert_called_with({'typ': 'def'})
-        ros1_to_cdr.assert_called_with(b'\x42', 'typ')
+        ros1_to_cdr.assert_has_calls([call(b'\x42', 'typ'), call(b'\x43', 'typ')])
 
         ros1_to_cdr.side_effect = KeyError('exc')
         with pytest.raises(ConverterError, match='Converting rosbag: '):
