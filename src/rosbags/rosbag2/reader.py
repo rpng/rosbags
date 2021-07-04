@@ -121,7 +121,7 @@ class Reader:
     @property
     def duration(self) -> int:
         """Duration in nanoseconds between earliest and latest messages."""
-        return self.metadata['duration']['nanoseconds']
+        return self.metadata['duration']['nanoseconds'] + 1
 
     @property
     def start_time(self) -> int:
@@ -130,7 +130,7 @@ class Reader:
 
     @property
     def end_time(self) -> int:
-        """Timestamp in nanoseconds of the latest message."""
+        """Timestamp in nanoseconds after the latest message."""
         return self.start_time + self.duration
 
     @property

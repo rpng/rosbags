@@ -120,9 +120,9 @@ def bag(request: SubRequest, tmp_path: Path) -> Path:
 def test_reader(bag: Path):
     """Test reader and deserializer on simple bag."""
     with Reader(bag) as reader:
-        assert reader.duration == 42
+        assert reader.duration == 43
         assert reader.start_time == 666
-        assert reader.end_time == 708
+        assert reader.end_time == 709
         assert reader.message_count == 4
         if reader.compression_mode:
             assert reader.compression_format == 'zstd'

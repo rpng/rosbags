@@ -198,9 +198,9 @@ def test_reader(tmp_path):  # pylint: disable=too-many-statements
     )
     with Reader(bag) as reader:
         assert reader.message_count == 1
-        assert reader.duration == 0
+        assert reader.duration == 1
         assert reader.start_time == 42 * 10**9
-        assert reader.end_time == 42 * 10**9
+        assert reader.end_time == 42 * 10**9 + 1
         assert len(reader.topics.keys()) == 1
         assert reader.topics['/topic0'].msgcount == 1
         msgs = list(reader.messages())
@@ -220,9 +220,9 @@ def test_reader(tmp_path):  # pylint: disable=too-many-statements
     )
     with Reader(bag) as reader:
         assert reader.message_count == 2
-        assert reader.duration == 5 * 10**9
+        assert reader.duration == 5 * 10**9 + 1
         assert reader.start_time == 5 * 10**9
-        assert reader.end_time == 10 * 10**9
+        assert reader.end_time == 10 * 10**9 + 1
         assert len(reader.topics.keys()) == 1
         assert reader.topics['/topic0'].msgcount == 2
         msgs = list(reader.messages())

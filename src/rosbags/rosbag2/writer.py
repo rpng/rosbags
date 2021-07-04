@@ -185,7 +185,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         self.cursor = None
 
         duration, start, count = self.conn.execute(
-            'SELECT max(timestamp) - min(timestamp) + 1, min(timestamp), count(*) FROM messages',
+            'SELECT max(timestamp) - min(timestamp), min(timestamp), count(*) FROM messages',
         ).fetchone()
 
         self.conn.commit()

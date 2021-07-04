@@ -94,7 +94,7 @@ class Chunk(NamedTuple):
 class TopicInfo(NamedTuple):
     """Topic information."""
 
-    conn_count: int
+    conncount: int
     msgcount: int
     msgdef: str
     msgtype: str
@@ -472,7 +472,7 @@ class Reader:
 
     @property
     def end_time(self) -> int:
-        """Timestamp in nanoseconds of the latest message."""
+        """Timestamp in nanoseconds after the latest message."""
         return max(x.end_time for x in self.chunk_infos)
 
     @property
@@ -517,7 +517,7 @@ class Reader:
 
         chunk_pos = header.get_uint64('chunk_pos')
         start_time = header.get_time('start_time')
-        end_time = header.get_time('end_time')
+        end_time = header.get_time('end_time') + 1
         count = header.get_uint32('count')
 
         self.bio.seek(4, os.SEEK_CUR)
