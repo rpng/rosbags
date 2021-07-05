@@ -98,6 +98,8 @@ def compile_lines(lines: List[str]) -> ModuleType:
         Compiled and loaded module.
 
     """
-    module = module_from_spec(spec_from_loader('tmpmod', loader=None))
+    spec = spec_from_loader('tmpmod', loader=None)
+    assert spec
+    module = module_from_spec(spec)
     exec('\n'.join(lines), module.__dict__)  # pylint: disable=exec-used
     return module

@@ -92,6 +92,7 @@ def register_types(typs: Typesdict) -> None:
     code = generate_python_code(typs)
     name = 'rosbags.usertypes'
     spec = spec_from_loader(name, loader=None)
+    assert spec
     module = module_from_spec(spec)
     sys.modules[name] = module
     exec(code, module.__dict__)  # pylint: disable=exec-used
