@@ -12,7 +12,7 @@ Rosbag1 connection information.
 
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import PurePosixPath as Path
 from typing import TYPE_CHECKING
 
 from .base import Nodetype, parse_message_definition
@@ -85,8 +85,8 @@ def normalize_msgtype(name: str) -> str:
     """
     path = Path(name)
     if path.parent.name != 'msg':
-        return str(path.parent / 'msg' / path.name)
-    return name
+        path = path.parent / 'msg' / path.name
+    return str(path)
 
 
 def normalize_fieldtype(field: Any, names: List[str]):
