@@ -5,15 +5,43 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from importlib.util import module_from_spec, spec_from_loader
 from typing import TYPE_CHECKING
 
 from . import types
-from .base import TypesysError
+from .base import Nodetype, TypesysError
 
 if TYPE_CHECKING:
     from .base import Typesdict
+
+INTLIKE = re.compile('^u?(bool|int|float)')
+
+
+def get_typehint(desc: tuple) -> str:
+    """Get python type hint for field.
+
+    Args:
+        desc: Field descriptor.
+
+    Returns:
+        Type hint for field.
+
+    """
+    if desc[0] == Nodetype.BASE:
+        if match := INTLIKE.match(desc[1]):
+            return match.group(1)
+        return 'str'
+
+    if desc[0] == Nodetype.NAME:
+        return desc[1].replace('/', '__')
+
+    sub = desc[2 if desc[0] == Nodetype.ARRAY else 1]
+    if INTLIKE.match(sub[1]):
+        typ = 'bool8' if sub[1] == 'bool' else sub[1]
+        return f'numpy.ndarray[Any, numpy.dtype[numpy.{typ}]]'
+    return f'list[{get_typehint(sub)}]'
 
 
 def generate_python_code(typs: Typesdict) -> str:
@@ -35,6 +63,7 @@ def generate_python_code(typs: Typesdict) -> str:
         '',
         '# flake8: noqa N801',
         '# pylint: disable=invalid-name,too-many-instance-attributes,too-many-lines',
+        '# pylint: disable=unsubscriptable-object',
         '',
         'from __future__ import annotations',
         '',
@@ -43,6 +72,8 @@ def generate_python_code(typs: Typesdict) -> str:
         '',
         'if TYPE_CHECKING:',
         '    from typing import Any',
+        '',
+        '    import numpy',
         '',
         '',
     ]
@@ -54,7 +85,7 @@ def generate_python_code(typs: Typesdict) -> str:
             f'class {pyname}:',
             f'    """Class for {name}."""',
             '',
-            *[f'    {fname[1]}: Any' for _, fname in fields],
+            *[f'    {fname[1]}: {get_typehint(desc)}' for desc, fname in fields],
         ]
 
         lines += [
