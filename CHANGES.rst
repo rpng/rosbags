@@ -3,6 +3,11 @@
 Changes
 =======
 
+0.9.2 - 2021-07-08
+------------------
+
+- Support relative type references in msg files
+
 0.9.1 - 2021-07-05
 ------------------
 
