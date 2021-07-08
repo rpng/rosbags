@@ -37,6 +37,11 @@ MSG: test_msgs/Other
 uint64[3] Header
 """
 
+RELSIBLING_MSG = """
+Header header
+Other other
+"""
+
 IDL_LANG = """
 // assign different literals and expressions
 
@@ -120,6 +125,17 @@ def test_parse_multi_msg():
     assert ret['test_msgs/msg/Foo'][0][0][1] == 'std_msgs/msg/Header'
     assert ret['test_msgs/msg/Foo'][1][0][1] == 'uint8'
     assert ret['test_msgs/msg/Foo'][2][0][1] == 'uint8'
+
+
+def test_parse_relative_siblings_msg():
+    """Test relative siblings with msg parser."""
+    ret = get_types_from_msg(RELSIBLING_MSG, 'test_msgs/msg/Foo')
+    assert ret['test_msgs/msg/Foo'][0][0][1] == 'std_msgs/msg/Header'
+    assert ret['test_msgs/msg/Foo'][1][0][1] == 'test_msgs/msg/Other'
+
+    ret = get_types_from_msg(RELSIBLING_MSG, 'rel_msgs/msg/Foo')
+    assert ret['rel_msgs/msg/Foo'][0][0][1] == 'std_msgs/msg/Header'
+    assert ret['rel_msgs/msg/Foo'][1][0][1] == 'rel_msgs/msg/Other'
 
 
 def test_parse_idl():

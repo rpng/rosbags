@@ -89,10 +89,11 @@ def normalize_msgtype(name: str) -> str:
     return str(path)
 
 
-def normalize_fieldtype(field: Any, names: List[str]):
+def normalize_fieldtype(typename: str, field: Any, names: List[str]):
     """Normalize field typename.
 
     Args:
+        typename: Type name of field owner.
         field: Field definition.
         names: Valid message names.
 
@@ -111,9 +112,12 @@ def normalize_fieldtype(field: Any, names: List[str]):
     else:
         if name in dct:
             name = dct[name]
+        elif name == 'Header':
+            name = 'std_msgs/msg/Header'
+        elif '/' not in name:
+            name = str(Path(typename).parent / name)
         elif '/msg/' not in name:
-            ptype = Path(name)
-            name = str(ptype.parent / 'msg' / ptype.name)
+            name = str((path := Path(name)).parent / 'msg' / path.name)
         inamedef = (Nodetype.NAME, name)
 
     if namedef[0] == Nodetype.NAME:
@@ -159,9 +163,9 @@ class VisitorMSG(Visitor):
         typelist = [children[0], *[x[1] for x in children[1]]]
         typedict = dict(typelist)
         names = list(typedict.keys())
-        for _, fields in typedict.items():
+        for name, fields in typedict.items():
             for field in fields:
-                normalize_fieldtype(field, names)
+                normalize_fieldtype(name, field, names)
         return typedict
 
     def visit_msgdef(self, children: Any) -> Any:

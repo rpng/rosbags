@@ -58,10 +58,22 @@ class Rule:
 class RuleLiteral(Rule):
     """Rule to match string literal."""
 
+    def __init__(self, value: Any, rules: Dict[str, Rule], name: Optional[str] = None):
+        """Initialize.
+
+        Args:
+            value: Value of this rule.
+            rules: Grammar containing all rules.
+            name: Name of this rule.
+
+        """
+        super().__init__(value, rules, name)
+        self.value = value[1:-1].replace('\\\'', '\'')
+
     def parse(self, text: str, pos: int) -> Tuple[int, Any]:
         """Apply rule at position."""
-        value: str = self.value[1:-1].replace('\\\'', '\'')
-        if text[pos:].startswith(value):
+        value = self.value
+        if text[pos:pos + len(value)] == value:
             npos = pos + len(value)
             npos = self.skip_ws(text, npos)
             return npos, (self.LIT, value)
@@ -71,10 +83,21 @@ class RuleLiteral(Rule):
 class RuleRegex(Rule):
     """Rule to match regular expression."""
 
+    def __init__(self, value: Any, rules: Dict[str, Rule], name: Optional[str] = None):
+        """Initialize.
+
+        Args:
+            value: Value of this rule.
+            rules: Grammar containing all rules.
+            name: Name of this rule.
+
+        """
+        super().__init__(value, rules, name)
+        self.value = re.compile(value[2:-1], re.M | re.S)
+
     def parse(self, text: str, pos: int) -> Tuple[int, Any]:
         """Apply rule at position."""
-        pattern = re.compile(self.value[2:-1], re.M | re.S)
-        match = pattern.match(text, pos)
+        match = self.value.match(text, pos)
         if not match:
             return -1, []
         npos = self.skip_ws(text, match.span()[1])
@@ -171,7 +194,6 @@ class Visitor:  # pylint: disable=too-few-public-methods
 
     def __init__(self):
         """Initialize."""
-        self.typedefs = {}
 
     def visit(self, tree: Any) -> Any:
         """Visit all nodes in parse tree."""
