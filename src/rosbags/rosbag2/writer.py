@@ -1,6 +1,6 @@
 # Copyright 2020-2021  Ternaris.
 # SPDX-License-Identifier: Apache-2.0
-"""Rosbag2 reader."""
+"""Rosbag2 writer."""
 
 from __future__ import annotations
 
@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 
 import zstandard
 from ruamel.yaml import YAML
+
+from .connection import Connection
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -77,10 +79,9 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         self.compression_mode = ''
         self.compression_format = ''
         self.compressor: Optional[zstandard.ZstdCompressor] = None
-        self.topics: Dict[str, Any] = {}
+        self.connections: Dict[int, Connection] = {}
         self.conn = None
         self.cursor: Optional[sqlite3.Cursor] = None
-        self.topics = {}
 
     def set_compression(self, mode: CompressionMode, fmt: CompressionFormat):
         """Enable compression on bag.
@@ -118,22 +119,27 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         self.conn.executescript(self.SQLITE_SCHEMA)
         self.cursor = self.conn.cursor()
 
-    def add_topic(
+    def add_connection(
         self,
-        name: str,
-        typ: str,
+        topic: str,
+        msgtype: str,
         serialization_format: str = 'cdr',
         offered_qos_profiles: str = '',
-    ):
-        """Add a topic.
+        **_kw: Any,
+    ) -> Connection:
+        """Add a connection.
 
         This function can only be called after opening a bag.
 
         Args:
-            name: Topic name.
-            typ: Message type.
+            topic: Topic name.
+            msgtype: Message type.
             serialization_format: Serialization format.
             offered_qos_profiles: QOS Profile.
+            _kw: Ignored to allow consuming dicts from connection objects.
+
+        Returns:
+            Connection object.
 
         Raises:
             WriterError: Bag not open or topic previously registered.
@@ -141,17 +147,28 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         """
         if not self.cursor:
             raise WriterError('Bag was not opened.')
-        if name in self.topics:
-            raise WriterError(f'Topics can only be added once: {name!r}.')
-        meta = (len(self.topics) + 1, name, typ, serialization_format, offered_qos_profiles)
-        self.cursor.execute('INSERT INTO topics VALUES(?, ?, ?, ?, ?)', meta)
-        self.topics[name] = [*meta, 0]
 
-    def write(self, topic: str, timestamp: int, data: bytes):
+        connection = Connection(
+            id=len(self.connections.values()) + 1,
+            count=0,
+            topic=topic,
+            msgtype=msgtype,
+            serialization_format=serialization_format,
+            offered_qos_profiles=offered_qos_profiles,
+        )
+        if connection in self.connections.values():
+            raise WriterError(f'Connection can only be added once: {connection!r}.')
+
+        self.connections[connection.id] = connection
+        meta = (connection.id, topic, msgtype, serialization_format, offered_qos_profiles)
+        self.cursor.execute('INSERT INTO topics VALUES(?, ?, ?, ?, ?)', meta)
+        return connection
+
+    def write(self, connection: Connection, timestamp: int, data: bytes):
         """Write message to rosbag2.
 
         Args:
-            topic: Topic message belongs to.
+            connection: Connection to write message to.
             timestamp: Message timestamp (ns).
             data: Serialized message data.
 
@@ -161,19 +178,18 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         """
         if not self.cursor:
             raise WriterError('Bag was not opened.')
-        if topic not in self.topics:
-            raise WriterError(f'Tried to write to unknown topic {topic!r}.')
+        if connection not in self.connections.values():
+            raise WriterError(f'Tried to write to unknown connection {connection!r}.')
 
         if self.compression_mode == 'message':
             assert self.compressor
             data = self.compressor.compress(data)
 
-        tmeta = self.topics[topic]
         self.cursor.execute(
             'INSERT INTO messages (topic_id, timestamp, data) VALUES(?, ?, ?)',
-            (tmeta[0], timestamp, data),
+            (connection.id, timestamp, data),
         )
-        tmeta[-1] += 1
+        connection.count += 1
 
     def close(self):
         """Close rosbag2 after writing.
@@ -214,13 +230,13 @@ class Writer:  # pylint: disable=too-many-instance-attributes
                 'topics_with_message_count': [
                     {
                         'topic_metadata': {
-                            'name': x[1],
-                            'type': x[2],
-                            'serialization_format': x[3],
-                            'offered_qos_profiles': x[4],
+                            'name': x.topic,
+                            'type': x.msgtype,
+                            'serialization_format': x.serialization_format,
+                            'offered_qos_profiles': x.offered_qos_profiles,
                         },
-                        'message_count': x[5],
-                    } for x in self.topics.values()
+                        'message_count': x.count,
+                    } for x in self.connections.values()
                 ],
                 'compression_format': self.compression_format,
                 'compression_mode': self.compression_mode,

@@ -4,16 +4,20 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import TYPE_CHECKING
 
 from rosbags.rosbag1 import Reader, ReaderError
 from rosbags.rosbag2 import Writer, WriterError
+from rosbags.rosbag2.connection import Connection as WConnection
 from rosbags.serde import ros1_to_cdr
 from rosbags.typesys import get_types_from_msg, register_types
 
 if TYPE_CHECKING:
     from pathlib import Path
     from typing import Any, Dict, Optional
+
+    from rosbags.rosbag1.reader import Connection as RConnection
 
 LATCH = """
 - history: 3
@@ -38,6 +42,26 @@ class ConverterError(Exception):
     """Converter Error."""
 
 
+def convert_connection(rconn: RConnection) -> WConnection:
+    """Convert rosbag1 connection to rosbag2 connection.
+
+    Args:
+        rconn: Rosbag1 connection.
+
+    Returns:
+        Rosbag2 connection.
+
+    """
+    return WConnection(
+        -1,
+        0,
+        rconn.topic,
+        rconn.msgtype,
+        'cdr',
+        LATCH if rconn.latching else '',
+    )
+
+
 def convert(src: Path, dst: Optional[Path]) -> None:
     """Convert Rosbag1 to Rosbag2.
 
@@ -57,21 +81,19 @@ def convert(src: Path, dst: Optional[Path]) -> None:
     try:
         with Reader(src) as reader, Writer(dst) as writer:
             typs: Dict[str, Any] = {}
-            for name, topic in reader.topics.items():
-                connection = next(  # pragma: no branch
-                    x for x in reader.connections.values() if x.topic == name
-                )
-                writer.add_topic(
-                    name,
-                    topic.msgtype,
-                    offered_qos_profiles=LATCH if connection.latching else '',
-                )
-                typs.update(get_types_from_msg(topic.msgdef, topic.msgtype))
+            connmap: Dict[int, WConnection] = {}
+
+            for rconn in reader.connections.values():
+                candidate = convert_connection(rconn)
+                existing = next((x for x in writer.connections.values() if x == candidate), None)
+                wconn = existing if existing else writer.add_connection(**asdict(candidate))
+                connmap[rconn.cid] = wconn
+                typs.update(get_types_from_msg(rconn.msgdef, rconn.msgtype))
             register_types(typs)
 
-            for topic, msgtype, timestamp, data in reader.messages():
-                data = ros1_to_cdr(data, msgtype)
-                writer.write(topic, timestamp, data)
+            for rconn, timestamp, data in reader.messages():
+                data = ros1_to_cdr(data, rconn.msgtype)
+                writer.write(connmap[rconn.cid], timestamp, data)
     except ReaderError as err:
         raise ConverterError(f'Reading source bag: {err}') from err
     except WriterError as err:

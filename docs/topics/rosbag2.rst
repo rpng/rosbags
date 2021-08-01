@@ -27,16 +27,18 @@ Instances of the :py:class:`Writer <rosbags.rosbag2.Writer>` class can create an
 
    from rosbags.rosbag2 import Writer
    from rosbags.serde import serialize_cdr
+   from rosbags.typesys.types import std_msgs__msg__String as String
 
    # create writer instance and open for writing
    with Writer('/home/ros/rosbag_2020_03_24') as writer:
-       # add new topic
-       topic = '/imu_raw/Imu'
-       msgtype = 'sensor_msgs/msg/Imu'
-       writer.add_topic(topic, msgtype, 'cdr')
+       # add new connection
+       topic = '/chatter'
+       msgtype = String.__msgtype__
+       connection = writer.add_connection(topic, msgtype, 'cdr', '')
 
        # serialize and write message
-       writer.write(topic, timestamp, serialize_cdr(message, msgtype))
+       message = String('hello world')
+       writer.write(connection, timestamp, serialize_cdr(message, msgtype))
 
 Reading rosbag2
 ---------------
@@ -49,17 +51,18 @@ Instances of the :py:class:`Reader <rosbags.rosbag2.Reader>` class are used to r
 
    # create reader instance and open for reading
    with Reader('/home/ros/rosbag_2020_03_24') as reader:
-       # topic and msgtype information is available on .topics dict
-       for topic, msgtype in reader.topics.items():
-           print(topic, msgtype)
+       # topic and msgtype information is available on .connections dict
+       for connection in reader.connections.values():
+           print(connection.topic, connection.msgtype)
 
        # iterate over messages
-       for topic, msgtype, timestamp, rawdata in reader.messages():
-           if topic == '/imu_raw/Imu':
-               msg = deserialize_cdr(rawdata, msgtype)
+       for connection, timestamp, rawdata in reader.messages():
+           if connection.topic == '/imu_raw/Imu':
+               msg = deserialize_cdr(rawdata, connection.msgtype)
                print(msg.header.frame_id)
 
-       # messages() accepts topic filters
-       for topic, msgtype, timestamp, rawdata in reader.messages(['/imu_raw/Imu']):
-           msg = deserialize_cdr(rawdata, msgtype)
+       # messages() accepts connection filters
+       connections = [x for x in reader.connections.values() if x.topic == '/imu_raw/Imu']
+       for connection, timestamp, rawdata in reader.messages(connections=connections):
+           msg = deserialize_cdr(rawdata, connection.msgtype)
            print(msg.header.frame_id)

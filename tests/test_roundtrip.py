@@ -29,14 +29,15 @@ def test_roundtrip(mode: Writer.CompressionMode, tmp_path: Path):
     wbag.set_compression(mode, wbag.CompressionFormat.ZSTD)
     with wbag:
         msgtype = 'std_msgs/msg/Float64'
-        wbag.add_topic('/test', msgtype)
-        wbag.write('/test', 42, serialize_cdr(Foo, msgtype))
+        wconnection = wbag.add_connection('/test', msgtype)
+        wbag.write(wconnection, 42, serialize_cdr(Foo, msgtype))
 
     rbag = Reader(path)
     with rbag:
         gen = rbag.messages()
-        _, msgtype, _, raw = next(gen)
-        msg = deserialize_cdr(raw, msgtype)
+        rconnection, _, raw = next(gen)
+        assert rconnection == wconnection
+        msg = deserialize_cdr(raw, rconnection.msgtype)
         assert msg.data == Foo.data
         with pytest.raises(StopIteration):
             next(gen)

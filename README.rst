@@ -41,8 +41,8 @@ Read and deserialize rosbag2 messages:
 
    # create reader instance and open for reading
    with Reader('/home/ros/rosbag_2020_03_24') as reader:
-       for topic, msgtype, timestamp, rawdata in reader.messages(['/imu_raw/Imu']):
-            msg = deserialize_cdr(rawdata, msgtype)
+       for connection, timestamp, rawdata in reader.messages(['/imu_raw/Imu']):
+            msg = deserialize_cdr(rawdata, connection.msgtype)
             print(msg.header.frame_id)
 
 

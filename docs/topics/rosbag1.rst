@@ -13,15 +13,16 @@ Instances of the :py:class:`Reader <rosbags.rosbag2.Reader>` class are typically
 
    # create reader instance
    with Reader('/home/ros/rosbag_2020_03_24.bag') as reader:
-       # topic and msgtype information is available on .topics dictionary
-       for topic, info in reader.topics.items():
-           print(topic, info)
+       # topic and msgtype information is available on .connections dictionary
+       for connection in reader.connections.values():
+           print(connection.topic, connection.msgtype)
 
        # iterate over messages
-       for topic, msgtype, timestamp, rawdata in reader.messages():
-           if topic == '/imu_raw/Imu':
+       for connection, timestamp, rawdata in reader.messages():
+           if connection.topic == '/imu_raw/Imu':
                print(timestamp)
 
-       # messages() accepts topic filters
-       for topic, msgtype, timestamp, rawdata in reader.messages(['/imu_raw/Imu']):
+       # messages() accepts connection filters
+       connections = [x for x in reader.connections.values() if x.topic == '/imu_raw/Imu']
+       for connection, timestamp, rawdata in reader.messages(connections=connections):
            print(timestamp)

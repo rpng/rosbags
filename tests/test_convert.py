@@ -76,17 +76,29 @@ def test_convert(tmp_path: Path):
          patch('rosbags.convert.converter.register_types') as register_types, \
          patch('rosbags.convert.converter.ros1_to_cdr') as ros1_to_cdr:
 
+        connections = [
+            Mock(topic='/topic', msgtype='typ', latching=False),
+            Mock(topic='/topic', msgtype='typ', latching=True),
+        ]
+
+        wconnections = [
+            Mock(topic='/topic', msgtype='typ'),
+            Mock(topic='/topic', msgtype='typ'),
+        ]
+
         reader.return_value.__enter__.return_value.connections = {
-            0: Mock(topic='/topic', latching=False),
-            1: Mock(topic='/latched', latching=True),
+            1: connections[0],
+            2: connections[1],
         }
-        reader.return_value.__enter__.return_value.topics = {
-            '/topic': Mock(msgtype='typ', msgdef='def'),
-            '/latched': Mock(msgtype='typ', msgdef='def'),
-        }
+
         reader.return_value.__enter__.return_value.messages.return_value = [
-            ('/topic', 'typ', 42, b'\x42'),
-            ('/latched', 'typ', 43, b'\x43'),
+            (connections[0], 42, b'\x42'),
+            (connections[1], 43, b'\x43'),
+        ]
+
+        writer.return_value.__enter__.return_value.add_connection.side_effect = [
+            wconnections[0],
+            wconnections[1],
         ]
 
         ros1_to_cdr.return_value = b'666'
@@ -97,14 +109,29 @@ def test_convert(tmp_path: Path):
         reader.return_value.__enter__.return_value.messages.assert_called_with()
 
         writer.assert_called_with(Path('foo'))
-        writer.return_value.__enter__.return_value.add_topic.assert_has_calls(
+        writer.return_value.__enter__.return_value.add_connection.assert_has_calls(
             [
-                call('/topic', 'typ', offered_qos_profiles=''),
-                call('/latched', 'typ', offered_qos_profiles=LATCH),
+                call(
+                    id=-1,
+                    count=0,
+                    topic='/topic',
+                    msgtype='typ',
+                    serialization_format='cdr',
+                    offered_qos_profiles='',
+                ),
+                call(
+                    id=-1,
+                    count=0,
+                    topic='/topic',
+                    msgtype='typ',
+                    serialization_format='cdr',
+                    offered_qos_profiles=LATCH,
+                ),
             ],
         )
         writer.return_value.__enter__.return_value.write.assert_has_calls(
-            [call('/topic', 42, b'666'), call('/latched', 43, b'666')],
+            [call(wconnections[0], 42, b'666'),
+             call(wconnections[1], 43, b'666')],
         )
 
         register_types.assert_called_with({'typ': 'def'})

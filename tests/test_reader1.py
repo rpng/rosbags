@@ -141,7 +141,7 @@ def write_bag(bag, header, chunks=None):  # pylint: disable=too-many-locals,too-
         header['index_pos'] = pack('<Q', pos)
 
     header = ser(header)
-    header += b'\x00' * (4096 - len(header))
+    header += b'\x20' * (4096 - len(header))
 
     bag.write_bytes(b''.join([
         magic,
@@ -227,8 +227,10 @@ def test_reader(tmp_path):  # pylint: disable=too-many-statements
         assert reader.topics['/topic0'].msgcount == 2
         msgs = list(reader.messages())
         assert len(msgs) == 2
-        assert msgs[0][3] == b'MSGCONTENT5'
-        assert msgs[1][3] == b'MSGCONTENT10'
+        assert msgs[0][0].topic == '/topic0'
+        assert msgs[0][2] == b'MSGCONTENT5'
+        assert msgs[1][0].topic == '/topic0'
+        assert msgs[1][2] == b'MSGCONTENT10'
 
     # sorts by time on different topic
     write_bag(
@@ -249,20 +251,20 @@ def test_reader(tmp_path):  # pylint: disable=too-many-statements
         assert reader.topics['/topic2'].msgcount == 1
         msgs = list(reader.messages())
         assert len(msgs) == 2
-        assert msgs[0][3] == b'MSGCONTENT5'
-        assert msgs[1][3] == b'MSGCONTENT10'
+        assert msgs[0][2] == b'MSGCONTENT5'
+        assert msgs[1][2] == b'MSGCONTENT10'
 
         msgs = list(reader.messages(['/topic0']))
         assert len(msgs) == 1
-        assert msgs[0][3] == b'MSGCONTENT10'
+        assert msgs[0][2] == b'MSGCONTENT10'
 
         msgs = list(reader.messages(start=7 * 10**9))
         assert len(msgs) == 1
-        assert msgs[0][3] == b'MSGCONTENT10'
+        assert msgs[0][2] == b'MSGCONTENT10'
 
         msgs = list(reader.messages(stop=7 * 10**9))
         assert len(msgs) == 1
-        assert msgs[0][3] == b'MSGCONTENT5'
+        assert msgs[0][2] == b'MSGCONTENT5'
 
 
 def test_user_errors(tmp_path):

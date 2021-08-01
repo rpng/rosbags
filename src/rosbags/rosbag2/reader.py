@@ -13,9 +13,11 @@ from typing import TYPE_CHECKING
 import zstandard
 from ruamel.yaml import YAML, YAMLError
 
+from .connection import Connection
+
 if TYPE_CHECKING:
     from types import TracebackType
-    from typing import Any, Generator, Iterable, List, Literal, Optional, Tuple, Type, Union
+    from typing import Any, Dict, Generator, Iterable, List, Literal, Optional, Tuple, Type, Union
 
 
 class ReaderError(Exception):
@@ -96,11 +98,21 @@ class Reader:
             if missing:
                 raise ReaderError(f'Some database files are missing: {[str(x) for x in missing]!r}')
 
-            topics = [x['topic_metadata'] for x in self.metadata['topics_with_message_count']]
-            noncdr = {y for x in topics if (y := x['serialization_format']) != 'cdr'}
+            self.connections = {
+                idx + 1: Connection(
+                    id=idx + 1,
+                    count=x['message_count'],
+                    topic=x['topic_metadata']['name'],
+                    msgtype=x['topic_metadata']['type'],
+                    serialization_format=x['topic_metadata']['serialization_format'],
+                    offered_qos_profiles=x['topic_metadata'].get('offered_qos_profiles', ''),
+                ) for idx, x in enumerate(self.metadata['topics_with_message_count'])
+            }
+            noncdr = {
+                y for x in self.connections.values() if (y := x.serialization_format) != 'cdr'
+            }
             if noncdr:
                 raise ReaderError(f'Serialization format {noncdr!r} is not supported.')
-            self.topics = {x['name']: x['type'] for x in topics}
 
             if self.compression_mode and (cfmt := self.compression_format) != 'zstd':
                 raise ReaderError(f'Compression format {cfmt!r} is not supported.')
@@ -149,22 +161,31 @@ class Reader:
         mode = self.metadata.get('compression_mode', '').lower()
         return mode if mode != 'none' else None
 
+    @property
+    def topics(self) -> Dict[str, Connection]:
+        """Topic information.
+
+        For the moment this a dictionary mapping topic names to connections.
+
+        """
+        return {x.topic: x for x in self.connections.values()}
+
     def messages(  # pylint: disable=too-many-locals
         self,
-        topics: Iterable[str] = (),
+        connections: Iterable[Connection] = (),
         start: Optional[int] = None,
         stop: Optional[int] = None,
-    ) -> Generator[Tuple[str, str, int, bytes], None, None]:
+    ) -> Generator[Tuple[Connection, int, bytes], None, None]:
         """Read messages from bag.
 
         Args:
-            topics: Iterable with topic names to filter for. An empty iterable
-                yields all messages.
+            connections: Iterable with connections to filter for. An empty
+                iterable disables filtering on connections.
             start: Yield only messages at or after this timestamp (ns).
             stop: Yield only messages before this timestamp (ns).
 
         Yields:
-            Tuples of topic name, type, timestamp (ns), and rawdata.
+            Tuples of connection, timestamp (ns), and rawdata.
 
         Raises:
             ReaderError: Bag not open.
@@ -173,7 +194,32 @@ class Reader:
         if not self.bio:
             raise ReaderError('Rosbag is not open.')
 
-        topics = tuple(topics)
+        query = [
+            'SELECT topics.id,messages.timestamp,messages.data',
+            'FROM messages JOIN topics ON messages.topic_id=topics.id',
+        ]
+        args: List[Any] = []
+        clause = 'WHERE'
+
+        if connections:
+            topics = {x.topic for x in connections}
+            query.append(f'{clause} topics.name IN ({",".join("?" for _ in topics)})')
+            args += topics
+            clause = 'AND'
+
+        if start is not None:
+            query.append(f'{clause} messages.timestamp >= ?')
+            args.append(start)
+            clause = 'AND'
+
+        if stop is not None:
+            query.append(f'{clause} messages.timestamp < ?')
+            args.append(stop)
+            clause = 'AND'
+
+        query.append('ORDER BY timestamp')
+        querystr = ' '.join(query)
+
         for filepath in self.paths:
             with decompress(filepath, self.compression_mode == 'file') as path:
                 conn = sqlite3.connect(f'file:{path}?immutable=1', uri=True)
@@ -186,34 +232,16 @@ class Reader:
                 if cur.fetchone()[0] != 2:
                     raise ReaderError(f'Cannot open database {path} or database missing tables.')
 
-                query = [
-                    'SELECT topics.name,topics.type,messages.timestamp,messages.data',
-                    'FROM messages JOIN topics ON messages.topic_id=topics.id',
-                ]
-                args: List[Any] = []
-
-                if topics:
-                    query.append(f'WHERE topics.name IN ({",".join("?" for _ in topics)})')
-                    args += topics
-
-                if start is not None:
-                    query.append(f'{"AND" if args else "WHERE"} messages.timestamp >= ?')
-                    args.append(start)
-
-                if stop is not None:
-                    query.append(f'{"AND" if args else "WHERE"} messages.timestamp < ?')
-                    args.append(stop)
-
-                query.append('ORDER BY timestamp')
-                cur.execute(' '.join(query), args)
+                cur.execute(querystr, args)
 
                 if self.compression_mode == 'message':
                     decomp = zstandard.ZstdDecompressor().decompress
                     for row in cur:
-                        topic, msgtype, timestamp, data = row
-                        yield topic, msgtype, timestamp, decomp(data)
+                        cid, timestamp, data = row
+                        yield self.connections[cid], timestamp, decomp(data)
                 else:
-                    yield from cur
+                    for cid, timestamp, data in cur:
+                        yield self.connections[cid], timestamp, data
 
     def __enter__(self) -> Reader:
         """Open rosbag2 when entering contextmanager."""

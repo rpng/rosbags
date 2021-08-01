@@ -126,25 +126,26 @@ def test_reader(bag: Path):
         assert reader.message_count == 4
         if reader.compression_mode:
             assert reader.compression_format == 'zstd'
-
+        assert [*reader.connections.keys()] == [1, 2, 3]
+        assert [*reader.topics.keys()] == ['/poly', '/magn', '/joint']
         gen = reader.messages()
 
-        topic, msgtype, timestamp, rawdata = next(gen)
-        assert topic == '/poly'
-        assert msgtype == 'geometry_msgs/msg/Polygon'
+        connection, timestamp, rawdata = next(gen)
+        assert connection.topic == '/poly'
+        assert connection.msgtype == 'geometry_msgs/msg/Polygon'
         assert timestamp == 666
         assert rawdata == MSG_POLY[0]
 
         for idx in range(2):
-            topic, msgtype, timestamp, rawdata = next(gen)
-            assert topic == '/magn'
-            assert msgtype == 'sensor_msgs/msg/MagneticField'
+            connection, timestamp, rawdata = next(gen)
+            assert connection.topic == '/magn'
+            assert connection.msgtype == 'sensor_msgs/msg/MagneticField'
             assert timestamp == 708
             assert rawdata == [MSG_MAGN, MSG_MAGN_BIG][idx][0]
 
-        topic, msgtype, timestamp, rawdata = next(gen)
-        assert topic == '/joint'
-        assert msgtype == 'trajectory_msgs/msg/JointTrajectory'
+        connection, timestamp, rawdata = next(gen)
+        assert connection.topic == '/joint'
+        assert connection.msgtype == 'trajectory_msgs/msg/JointTrajectory'
 
         with pytest.raises(StopIteration):
             next(gen)
@@ -153,32 +154,32 @@ def test_reader(bag: Path):
 def test_message_filters(bag: Path):
     """Test reader filters messages."""
     with Reader(bag) as reader:
-
-        gen = reader.messages(['/magn'])
-        topic, _, _, _ = next(gen)
-        assert topic == '/magn'
-        topic, _, _, _ = next(gen)
-        assert topic == '/magn'
+        magn_connections = [x for x in reader.connections.values() if x.topic == '/magn']
+        gen = reader.messages(connections=magn_connections)
+        connection, _, _ = next(gen)
+        assert connection.topic == '/magn'
+        connection, _, _ = next(gen)
+        assert connection.topic == '/magn'
         with pytest.raises(StopIteration):
             next(gen)
 
         gen = reader.messages(start=667)
-        topic, _, _, _ = next(gen)
-        assert topic == '/magn'
-        topic, _, _, _ = next(gen)
-        assert topic == '/magn'
-        topic, _, _, _ = next(gen)
-        assert topic == '/joint'
+        connection, _, _ = next(gen)
+        assert connection.topic == '/magn'
+        connection, _, _ = next(gen)
+        assert connection.topic == '/magn'
+        connection, _, _ = next(gen)
+        assert connection.topic == '/joint'
         with pytest.raises(StopIteration):
             next(gen)
 
         gen = reader.messages(stop=667)
-        topic, _, _, _ = next(gen)
-        assert topic == '/poly'
+        connection, _, _ = next(gen)
+        assert connection.topic == '/poly'
         with pytest.raises(StopIteration):
             next(gen)
 
-        gen = reader.messages(['/magn'], stop=667)
+        gen = reader.messages(connections=magn_connections, stop=667)
         with pytest.raises(StopIteration):
             next(gen)
 

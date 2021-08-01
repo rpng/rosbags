@@ -249,7 +249,7 @@ class Header(dict):
             raise ReaderError(f'Could not read time field {name!r}.') from err
 
     @classmethod
-    def read(cls: type, src: BinaryIO, expect: Optional[RecordType] = None) -> 'Header':
+    def read(cls: type, src: BinaryIO, expect: Optional[RecordType] = None) -> Header:
         """Read header from file handle.
 
         Args:
@@ -588,7 +588,7 @@ class Reader:
         topics: Optional[Iterable[str]] = None,
         start: Optional[int] = None,
         stop: Optional[int] = None,
-    ) -> Generator[Tuple[str, str, int, bytes], None, None]:
+    ) -> Generator[Tuple[Connection, int, bytes], None, None]:
         """Read messages from bag.
 
         Args:
@@ -598,7 +598,7 @@ class Reader:
             stop: Yield only messages before this timestamp (ns).
 
         Yields:
-            Tuples of topic name, type, timestamp (ns), and rawdata.
+            Tuples of connection, timestamp (ns), and rawdata.
 
         Raises:
             ReaderError: Bag not open or data corrupt.
@@ -635,13 +635,10 @@ class Reader:
             if have != RecordType.MSGDATA:
                 raise ReaderError('Expected to find message data.')
 
-            connection = self.connections[header.get_uint32('conn')]
-            time = header.get_time('time')
-
             data = read_bytes(chunk, read_uint32(chunk))
-
-            assert entry.time == time
-            yield connection.topic, connection.msgtype, time, data
+            connection = self.connections[header.get_uint32('conn')]
+            assert entry.time == header.get_time('time')
+            yield connection, entry.time, data
 
     def __enter__(self) -> Reader:
         """Open rosbag1 when entering contextmanager."""
