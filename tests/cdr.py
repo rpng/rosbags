@@ -161,12 +161,13 @@ def deserialize_message(rawdata: bytes, bmap: BasetypeMap, pos: int, msgdef: Msg
                 values.append(num)
 
         elif desc.valtype == Valtype.ARRAY:
-            arr, pos = deserialize_array(rawdata, bmap, pos, *desc.args)
+            subdesc, length = desc.args
+            arr, pos = deserialize_array(rawdata, bmap, pos, length, subdesc)
             values.append(arr)
 
         elif desc.valtype == Valtype.SEQUENCE:
             size, pos = deserialize_number(rawdata, bmap, pos, 'int32')
-            arr, pos = deserialize_array(rawdata, bmap, pos, int(size), desc.args)
+            arr, pos = deserialize_array(rawdata, bmap, pos, int(size), desc.args[0])
             values.append(arr)
 
     return msgdef.cls(*values), pos
@@ -323,12 +324,12 @@ def serialize_message(
                 pos = serialize_number(rawdata, bmap, pos, desc.args, val)
 
         elif desc.valtype == Valtype.ARRAY:
-            pos = serialize_array(rawdata, bmap, pos, desc.args[1], val)
+            pos = serialize_array(rawdata, bmap, pos, desc.args[0], val)
 
         elif desc.valtype == Valtype.SEQUENCE:
             size = len(val)
             pos = serialize_number(rawdata, bmap, pos, 'int32', size)
-            pos = serialize_array(rawdata, bmap, pos, desc.args, val)
+            pos = serialize_array(rawdata, bmap, pos, desc.args[0], val)
 
     return pos
 
@@ -397,14 +398,15 @@ def get_size(message: Any, msgdef: Msgdef, size: int = 0) -> int:
                 size += isize
 
         elif desc.valtype == Valtype.ARRAY:
-            if len(val) != desc.args[0]:
-                raise SerdeError(f'Unexpected array length: {len(val)} != {desc.args[0]}.')
-            size = get_array_size(desc.args[1], val, size)
+            subdesc, length = desc.args
+            if len(val) != length:
+                raise SerdeError(f'Unexpected array length: {len(val)} != {length}.')
+            size = get_array_size(subdesc, val, size)
 
         elif desc.valtype == Valtype.SEQUENCE:
             size = (size + 4 - 1) & -4
             size += 4
-            size = get_array_size(desc.args, val, size)
+            size = get_array_size(desc.args[0], val, size)
 
     return size
 

@@ -261,8 +261,20 @@ class VisitorIDL(Visitor):  # pylint: disable=too-many-public-methods
     def visit_specification(self, children: Any) -> Typesdict:
         """Process start symbol, return only children of modules."""
         children = [x[0] for x in children if x is not None]
-        modules = [y for t, x in children if t == Nodetype.MODULE for y in x]
-        return {x[1]: x[2] for x in modules if x[0] == Nodetype.STRUCT}
+        structs = {}
+        consts: dict[str, list[tuple[str, str, Any]]] = {}
+        for item in children:
+            if item[0] != Nodetype.MODULE:
+                continue
+            for subitem in item[1]:
+                if subitem[0] == Nodetype.STRUCT:
+                    structs[subitem[1]] = subitem[2]
+                elif subitem[0] == Nodetype.CONST and '_Constants/' in subitem[1][1]:
+                    structname, varname = subitem[1][1].split('_Constants/')
+                    if structname not in consts:
+                        consts[structname] = []
+                    consts[structname].append((varname, subitem[1][0], subitem[1][2]))
+        return {k: (consts.get(k, []), v) for k, v in structs.items()}
 
     def visit_comment(self, children: Any) -> Any:
         """Process comment, suppress output."""
@@ -273,12 +285,6 @@ class VisitorIDL(Visitor):  # pylint: disable=too-many-public-methods
     def visit_include(self, children: Any) -> Any:
         """Process include, suppress output."""
 
-    def visit_type_dcl(self, children: Any) -> Any:
-        """Process typedef, pass structs, suppress otherwise."""
-        if children[0] == Nodetype.STRUCT:
-            return children
-        return None
-
     def visit_module_dcl(self, children: Any) -> Any:
         """Process module declaration."""
         assert len(children) == 6
@@ -288,7 +294,6 @@ class VisitorIDL(Visitor):  # pylint: disable=too-many-public-methods
         children = children[4]
         consts = []
         structs = []
-        modules = []
         for item in children:
             if not item or item[0] is None:
                 continue
@@ -299,20 +304,23 @@ class VisitorIDL(Visitor):  # pylint: disable=too-many-public-methods
                 structs.append(item)
             else:
                 assert item[0] == Nodetype.MODULE
-                modules.append(item)
+                consts += [x for x in item[1] if x[0] == Nodetype.CONST]
+                structs += [x for x in item[1] if x[0] == Nodetype.STRUCT]
 
-        for _, module in modules:
-            consts += [x for x in module if x[0] == Nodetype.CONST]
-            structs += [x for x in module if x[0] == Nodetype.STRUCT]
-
-        consts = [(x[0], f'{name}/{x[1][0]}', *x[1][1:]) for x in consts]
+        consts = [(x[0], (x[1][0], f'{name}/{x[1][1]}', x[1][2])) for x in consts]
         structs = [(x[0], f'{name}/{x[1]}', *x[2:]) for x in structs]
 
         return (Nodetype.MODULE, consts + structs)
 
     def visit_const_dcl(self, children: Any) -> Any:
         """Process const declaration."""
-        return (Nodetype.CONST, (children[1][1], *children[2:]))
+        return (Nodetype.CONST, (children[1][1], children[2][1], children[4][1]))
+
+    def visit_type_dcl(self, children: Any) -> Any:
+        """Process type, pass structs, suppress otherwise."""
+        if children[0] == Nodetype.STRUCT:
+            return children
+        return None
 
     def visit_type_declarator(self, children: Any) -> Any:
         """Process type declarator, register type mapping in instance typedef dictionary."""
@@ -323,7 +331,7 @@ class VisitorIDL(Visitor):  # pylint: disable=too-many-public-methods
         declarators = [children[1][0], *[x[1:][0] for x in children[1][1]]]
         for declarator in declarators:
             if declarator[0] == Nodetype.ADECLARATOR:
-                value = (Nodetype.ARRAY, declarator[2][1], base)
+                value = (Nodetype.ARRAY, (base, declarator[2][1]))
             else:
                 value = base
             self.typedefs[declarator[1][1]] = value
@@ -333,8 +341,7 @@ class VisitorIDL(Visitor):  # pylint: disable=too-many-public-methods
         assert len(children) in [4, 6]
         if len(children) == 6:
             assert children[4][0] == Nodetype.LITERAL_NUMBER
-            return (Nodetype.SEQUENCE, children[2])
-        return (Nodetype.SEQUENCE, children[2])
+        return (Nodetype.SEQUENCE, (children[2], None))
 
     def create_struct_field(self, parts: Any) -> Any:
         """Create struct field and expand typedefs."""
@@ -346,7 +353,7 @@ class VisitorIDL(Visitor):  # pylint: disable=too-many-public-methods
                 name = self.typedefs[name[1]]
             return name
 
-        yield from ((resolve_name(typename), x[1]) for x in params if x)
+        yield from ((x[1][1], resolve_name(typename)) for x in params if x)
 
     def visit_struct_dcl(self, children: Any) -> Any:
         """Process struct declaration."""

@@ -35,6 +35,7 @@ time time
 ================================================================================
 MSG: test_msgs/Other
 uint64[3] Header
+uint32 static = 42
 """
 
 RELSIBLING_MSG = """
@@ -81,6 +82,11 @@ module test_msgs {
     typedef test_msgs::msg::Bar Bar;
     typedef double d4[4];
 
+    module Foo_Constants {
+        const int32 FOO = 32;
+        const int64 BAR = 64;
+    };
+
     @comment(type="text", text="ignore")
     struct Foo {
         std_msgs::msg::Header header;
@@ -102,17 +108,18 @@ def test_parse_msg():
         get_types_from_msg('', 'test_msgs/msg/Foo')
     ret = get_types_from_msg(MSG, 'test_msgs/msg/Foo')
     assert 'test_msgs/msg/Foo' in ret
-    fields = ret['test_msgs/msg/Foo']
-    assert fields[0][0][1] == 'std_msgs/msg/Header'
-    assert fields[0][1][1] == 'header'
-    assert fields[1][0][1] == 'std_msgs/msg/Bool'
-    assert fields[1][1][1] == 'bool'
-    assert fields[2][0][1] == 'test_msgs/msg/Bar'
-    assert fields[2][1][1] == 'sibling'
-    assert fields[3][0][0] == Nodetype.BASE
-    assert fields[4][0][0] == Nodetype.SEQUENCE
-    assert fields[5][0][0] == Nodetype.SEQUENCE
-    assert fields[6][0][0] == Nodetype.ARRAY
+    consts, fields = ret['test_msgs/msg/Foo']
+    assert consts == [('global', 'int32', 42)]
+    assert fields[0][0] == 'header'
+    assert fields[0][1][1] == 'std_msgs/msg/Header'
+    assert fields[1][0] == 'bool'
+    assert fields[1][1][1] == 'std_msgs/msg/Bool'
+    assert fields[2][0] == 'sibling'
+    assert fields[2][1][1] == 'test_msgs/msg/Bar'
+    assert fields[3][1][0] == Nodetype.BASE
+    assert fields[4][1][0] == Nodetype.SEQUENCE
+    assert fields[5][1][0] == Nodetype.SEQUENCE
+    assert fields[6][1][0] == Nodetype.ARRAY
 
 
 def test_parse_multi_msg():
@@ -122,20 +129,23 @@ def test_parse_multi_msg():
     assert 'test_msgs/msg/Foo' in ret
     assert 'std_msgs/msg/Header' in ret
     assert 'test_msgs/msg/Other' in ret
-    assert ret['test_msgs/msg/Foo'][0][0][1] == 'std_msgs/msg/Header'
-    assert ret['test_msgs/msg/Foo'][1][0][1] == 'uint8'
-    assert ret['test_msgs/msg/Foo'][2][0][1] == 'uint8'
+    fields = ret['test_msgs/msg/Foo'][1]
+    assert fields[0][1][1] == 'std_msgs/msg/Header'
+    assert fields[1][1][1] == 'uint8'
+    assert fields[2][1][1] == 'uint8'
+    consts = ret['test_msgs/msg/Other'][0]
+    assert consts == [('static', 'uint32', 42)]
 
 
 def test_parse_relative_siblings_msg():
     """Test relative siblings with msg parser."""
     ret = get_types_from_msg(RELSIBLING_MSG, 'test_msgs/msg/Foo')
-    assert ret['test_msgs/msg/Foo'][0][0][1] == 'std_msgs/msg/Header'
-    assert ret['test_msgs/msg/Foo'][1][0][1] == 'test_msgs/msg/Other'
+    assert ret['test_msgs/msg/Foo'][1][0][1][1] == 'std_msgs/msg/Header'
+    assert ret['test_msgs/msg/Foo'][1][1][1][1] == 'test_msgs/msg/Other'
 
     ret = get_types_from_msg(RELSIBLING_MSG, 'rel_msgs/msg/Foo')
-    assert ret['rel_msgs/msg/Foo'][0][0][1] == 'std_msgs/msg/Header'
-    assert ret['rel_msgs/msg/Foo'][1][0][1] == 'rel_msgs/msg/Other'
+    assert ret['rel_msgs/msg/Foo'][1][0][1][1] == 'std_msgs/msg/Header'
+    assert ret['rel_msgs/msg/Foo'][1][1][1][1] == 'rel_msgs/msg/Other'
 
 
 def test_parse_idl():
@@ -145,28 +155,29 @@ def test_parse_idl():
 
     ret = get_types_from_idl(IDL)
     assert 'test_msgs/msg/Foo' in ret
-    fields = ret['test_msgs/msg/Foo']
-    assert fields[0][0][1] == 'std_msgs/msg/Header'
-    assert fields[0][1][1] == 'header'
-    assert fields[1][0][1] == 'std_msgs/msg/Bool'
-    assert fields[1][1][1] == 'bool'
-    assert fields[2][0][1] == 'test_msgs/msg/Bar'
-    assert fields[2][1][1] == 'sibling'
-    assert fields[3][0][0] == Nodetype.BASE
-    assert fields[4][0][0] == Nodetype.SEQUENCE
-    assert fields[5][0][0] == Nodetype.SEQUENCE
-    assert fields[6][0][0] == Nodetype.ARRAY
+    consts, fields = ret['test_msgs/msg/Foo']
+    assert consts == [('FOO', 'int32', 32), ('BAR', 'int64', 64)]
+    assert fields[0][0] == 'header'
+    assert fields[0][1][1] == 'std_msgs/msg/Header'
+    assert fields[1][0] == 'bool'
+    assert fields[1][1][1] == 'std_msgs/msg/Bool'
+    assert fields[2][0] == 'sibling'
+    assert fields[2][1][1] == 'test_msgs/msg/Bar'
+    assert fields[3][1][0] == Nodetype.BASE
+    assert fields[4][1][0] == Nodetype.SEQUENCE
+    assert fields[5][1][0] == Nodetype.SEQUENCE
+    assert fields[6][1][0] == Nodetype.ARRAY
 
 
 def test_register_types():
     """Test type registeration."""
     assert 'foo' not in FIELDDEFS
     register_types({})
-    register_types({'foo': [[(1, 'bool'), (2, 'b')]]})
+    register_types({'foo': [[], [('b', (1, 'bool'))]]})
     assert 'foo' in FIELDDEFS
 
-    register_types({'std_msgs/msg/Header': []})
-    assert len(FIELDDEFS['std_msgs/msg/Header']) == 2
+    register_types({'std_msgs/msg/Header': [[], []]})
+    assert len(FIELDDEFS['std_msgs/msg/Header'][1]) == 2
 
     with pytest.raises(TypesysError, match='different definition'):
-        register_types({'foo': [[(1, 'bool'), (2, 'x')]]})
+        register_types({'foo': [[], [('x', (1, 'bool'))]]})

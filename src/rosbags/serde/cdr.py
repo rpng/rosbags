@@ -68,19 +68,19 @@ def generate_getsize_cdr(fields: List[Field]) -> Tuple[Callable, int]:
                 size += SIZEMAP[desc.args]
 
         elif desc.valtype == Valtype.ARRAY:
-            subdesc = desc.args[1]
+            subdesc, length = desc.args
 
             if subdesc.valtype == Valtype.BASE:
                 if subdesc.args == 'string':
                     lines.append(f'  val = message.{fieldname}')
-                    for idx in range(desc.args[0]):
+                    for idx in range(length):
                         lines.append('  pos = (pos + 4 - 1) & -4')
                         lines.append(f'  pos += 4 + len(val[{idx}].encode()) + 1')
                     aligned = 1
                     is_stat = False
                 else:
-                    lines.append(f'  pos += {desc.args[0] * SIZEMAP[subdesc.args]}')
-                    size += desc.args[0] * SIZEMAP[subdesc.args]
+                    lines.append(f'  pos += {length * SIZEMAP[subdesc.args]}')
+                    size += length * SIZEMAP[subdesc.args]
 
             else:
                 assert subdesc.valtype == Valtype.MESSAGE
@@ -88,7 +88,7 @@ def generate_getsize_cdr(fields: List[Field]) -> Tuple[Callable, int]:
                 anext_after = align_after(subdesc)
 
                 if subdesc.args.size_cdr:
-                    for _ in range(desc.args[0]):
+                    for _ in range(length):
                         if anext > anext_after:
                             lines.append(f'  pos = (pos + {anext} - 1) & -{anext}')
                             size = (size + anext - 1) & -anext
@@ -97,7 +97,7 @@ def generate_getsize_cdr(fields: List[Field]) -> Tuple[Callable, int]:
                 else:
                     lines.append(f'  func = get_msgdef("{subdesc.args.name}").getsize_cdr')
                     lines.append(f'  val = message.{fieldname}')
-                    for idx in range(desc.args[0]):
+                    for idx in range(length):
                         if anext > anext_after:
                             lines.append(f'  pos = (pos + {anext} - 1) & -{anext}')
                         lines.append(f'  pos = func(pos, val[{idx}])')
@@ -107,7 +107,7 @@ def generate_getsize_cdr(fields: List[Field]) -> Tuple[Callable, int]:
             assert desc.valtype == Valtype.SEQUENCE
             lines.append('  pos += 4')
             aligned = 4
-            subdesc = desc.args
+            subdesc = desc.args[0]
             if subdesc.valtype == Valtype.BASE:
                 if subdesc.args == 'string':
                     lines.append(f'  for val in message.{fieldname}:')
@@ -211,13 +211,13 @@ def generate_serialize_cdr(fields: List[Field], endianess: str) -> Callable:
                 aligned = SIZEMAP[desc.args]
 
         elif desc.valtype == Valtype.ARRAY:
-            subdesc = desc.args[1]
-            lines.append(f'  if len(val) != {desc.args[0]}:')
+            subdesc, length = desc.args
+            lines.append(f'  if len(val) != {length}:')
             lines.append('    raise SerdeError(\'Unexpected array length\')')
 
             if subdesc.valtype == Valtype.BASE:
                 if subdesc.args == 'string':
-                    for idx in range(desc.args[0]):
+                    for idx in range(length):
                         lines.append(f'  bval = memoryview(val[{idx}].encode())')
                         lines.append('  length = len(bval) + 1')
                         lines.append('  pos = (pos + 4 - 1) & -4')
@@ -229,7 +229,7 @@ def generate_serialize_cdr(fields: List[Field], endianess: str) -> Callable:
                 else:
                     if (endianess == 'le') != (sys.byteorder == 'little'):
                         lines.append('  val = val.byteswap()')
-                    size = desc.args[0] * SIZEMAP[subdesc.args]
+                    size = length * SIZEMAP[subdesc.args]
                     lines.append(f'  rawdata[pos:pos + {size}] = val.view(numpy.uint8)')
                     lines.append(f'  pos += {size}')
 
@@ -240,7 +240,7 @@ def generate_serialize_cdr(fields: List[Field], endianess: str) -> Callable:
                 lines.append(
                     f'  func = get_msgdef("{subdesc.args.name}").serialize_cdr_{endianess}',
                 )
-                for idx in range(desc.args[0]):
+                for idx in range(length):
                     if anext > anext_after:
                         lines.append(f'  pos = (pos + {anext} - 1) & -{anext}')
                     lines.append(f'  pos = func(rawdata, pos, val[{idx}])')
@@ -250,7 +250,7 @@ def generate_serialize_cdr(fields: List[Field], endianess: str) -> Callable:
             lines.append(f'  pack_int32_{endianess}(rawdata, pos, len(val))')
             lines.append('  pos += 4')
             aligned = 4
-            subdesc = desc.args
+            subdesc = desc.args[0]
 
             if subdesc.valtype == Valtype.BASE:
                 if subdesc.args == 'string':
@@ -350,11 +350,11 @@ def generate_deserialize_cdr(fields: List[Field], endianess: str) -> Callable:
                 aligned = SIZEMAP[desc.args]
 
         elif desc.valtype == Valtype.ARRAY:
-            subdesc = desc.args[1]
+            subdesc, length = desc.args
             if subdesc.valtype == Valtype.BASE:
                 if subdesc.args == 'string':
                     lines.append('  value = []')
-                    for idx in range(desc.args[0]):
+                    for idx in range(length):
                         if idx:
                             lines.append('  pos = (pos + 4 - 1) & -4')
                         lines.append(f'  length = unpack_int32_{endianess}(rawdata, pos)[0]')
@@ -365,10 +365,10 @@ def generate_deserialize_cdr(fields: List[Field], endianess: str) -> Callable:
                     lines.append('  values.append(value)')
                     aligned = 1
                 else:
-                    size = desc.args[0] * SIZEMAP[subdesc.args]
+                    size = length * SIZEMAP[subdesc.args]
                     lines.append(
                         f'  val = numpy.frombuffer(rawdata, '
-                        f'dtype=numpy.{subdesc.args}, count={desc.args[0]}, offset=pos)',
+                        f'dtype=numpy.{subdesc.args}, count={length}, offset=pos)',
                     )
                     if (endianess == 'le') != (sys.byteorder == 'little'):
                         lines.append('  val = val.byteswap()')
@@ -380,7 +380,7 @@ def generate_deserialize_cdr(fields: List[Field], endianess: str) -> Callable:
                 anext_after = align_after(subdesc)
                 lines.append(f'  msgdef = get_msgdef("{subdesc.args.name}")')
                 lines.append('  value = []')
-                for _ in range(desc.args[0]):
+                for _ in range(length):
                     if anext > anext_after:
                         lines.append(f'  pos = (pos + {anext} - 1) & -{anext}')
                     lines.append(f'  obj, pos = msgdef.{funcname}(rawdata, pos, msgdef.cls)')
@@ -393,7 +393,7 @@ def generate_deserialize_cdr(fields: List[Field], endianess: str) -> Callable:
             lines.append(f'  size = unpack_int32_{endianess}(rawdata, pos)[0]')
             lines.append('  pos += 4')
             aligned = 4
-            subdesc = desc.args
+            subdesc = desc.args[0]
 
             if subdesc.valtype == Valtype.BASE:
                 if subdesc.args == 'string':

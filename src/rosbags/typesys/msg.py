@@ -21,7 +21,7 @@ from .peg import Rule, Visitor, parse_grammar
 if TYPE_CHECKING:
     from typing import Any, List
 
-    from .base import Typesdict
+    from .base import Fielddesc, Typesdict
 
 GRAMMAR_MSG = r"""
 specification
@@ -42,7 +42,7 @@ comment
   = r'#[^\n]*'
 
 const_dcl
-  = type_spec identifier '=' r'[^=][^\n]*'
+  = type_spec identifier '=' integer_literal
 
 field_dcl
   = type_spec identifier
@@ -89,7 +89,7 @@ def normalize_msgtype(name: str) -> str:
     return str(path)
 
 
-def normalize_fieldtype(typename: str, field: Any, names: List[str]):
+def normalize_fieldtype(typename: str, field: Fielddesc, names: List[str]) -> Fielddesc:
     """Normalize field typename.
 
     Args:
@@ -97,18 +97,20 @@ def normalize_fieldtype(typename: str, field: Any, names: List[str]):
         field: Field definition.
         names: Valid message names.
 
+    Returns:
+        Normalized fieldtype.
+
     """
     dct = {Path(name).name: name for name in names}
-    namedef = field[0]
-    if namedef[0] == Nodetype.NAME:
-        name = namedef[1]
-    elif namedef[0] == Nodetype.SEQUENCE:
-        name = namedef[1][1]
+    ftype, args = field
+    if ftype == Nodetype.NAME:
+        name = args
     else:
-        name = namedef[2][1]
+        name = args[0][1]
 
+    assert isinstance(name, str)
     if name in VisitorMSG.BASETYPES:
-        inamedef = (Nodetype.BASE, name)
+        ifield = (Nodetype.BASE, name)
     else:
         if name in dct:
             name = dct[name]
@@ -118,16 +120,13 @@ def normalize_fieldtype(typename: str, field: Any, names: List[str]):
             name = str(Path(typename).parent / name)
         elif '/msg/' not in name:
             name = str((path := Path(name)).parent / 'msg' / path.name)
-        inamedef = (Nodetype.NAME, name)
+        ifield = (Nodetype.NAME, name)
 
-    if namedef[0] == Nodetype.NAME:
-        namedef = inamedef
-    elif namedef[0] == Nodetype.SEQUENCE:
-        namedef = (Nodetype.SEQUENCE, inamedef)
-    else:
-        namedef = (Nodetype.ARRAY, namedef[1], inamedef)
+    if ftype == Nodetype.NAME:
+        return ifield
 
-    field[0] = namedef
+    assert not isinstance(args, str)
+    return (ftype, (ifield, args[1]))
 
 
 class VisitorMSG(Visitor):
@@ -157,6 +156,7 @@ class VisitorMSG(Visitor):
 
     def visit_const_dcl(self, children: Any) -> Any:
         """Process const declaration, suppress output."""
+        return Nodetype.CONST, (children[0][1], children[1][1], children[3])
 
     def visit_specification(self, children: Any) -> Typesdict:
         """Process start symbol."""
@@ -164,8 +164,10 @@ class VisitorMSG(Visitor):
         typedict = dict(typelist)
         names = list(typedict.keys())
         for name, fields in typedict.items():
-            for field in fields:
-                normalize_fieldtype(name, field, names)
+            consts = [(x[1][1], x[1][0], x[1][2]) for x in fields if x[0] == Nodetype.CONST]
+            fields = [x for x in fields if x[0] != Nodetype.CONST]
+            fields = [(field[1][1], normalize_fieldtype(name, field[0], names)) for field in fields]
+            typedict[name] = consts, fields
         return typedict
 
     def visit_msgdef(self, children: Any) -> Any:
@@ -180,8 +182,8 @@ class VisitorMSG(Visitor):
         """Process array type specifier."""
         length = children[1][1]
         if length:
-            return (Nodetype.ARRAY, int(length[0]), children[0])
-        return (Nodetype.SEQUENCE, children[0])
+            return Nodetype.ARRAY, (children[0], length[0])
+        return Nodetype.SEQUENCE, (children[0], None)
 
     def visit_simple_type_spec(self, children: Any) -> Any:
         """Process simple type specifier."""
@@ -203,6 +205,10 @@ class VisitorMSG(Visitor):
     def visit_identifier(self, children: Any) -> Any:
         """Process identifier."""
         return (Nodetype.NAME, children)
+
+    def visit_integer_literal(self, children: Any) -> Any:
+        """Process integer literal."""
+        return int(children)
 
 
 def get_types_from_msg(text: str, name: str) -> Typesdict:

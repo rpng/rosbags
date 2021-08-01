@@ -22,12 +22,12 @@ if TYPE_CHECKING:
 
 
 def generate_ros1_to_cdr(fields: List[Field], typename: str, copy: bool) -> Callable:
-    """Generate CDR serialization function.
+    """Generate ROS1 to CDR conversion function.
 
     Args:
         fields: Fields of message.
         typename: Message type name.
-        copy: Generate serialization or sizing function.
+        copy: Generate conversion or sizing function.
 
     Returns:
         ROS1 to CDR conversion function.
@@ -42,17 +42,7 @@ def generate_ros1_to_cdr(fields: List[Field], typename: str, copy: bool) -> Call
         'import sys',
         'import numpy',
         'from rosbags.serde.messages import SerdeError, get_msgdef',
-        'from rosbags.serde.primitives import pack_bool_le',
-        'from rosbags.serde.primitives import pack_int8_le',
-        'from rosbags.serde.primitives import pack_int16_le',
         'from rosbags.serde.primitives import pack_int32_le',
-        'from rosbags.serde.primitives import pack_int64_le',
-        'from rosbags.serde.primitives import pack_uint8_le',
-        'from rosbags.serde.primitives import pack_uint16_le',
-        'from rosbags.serde.primitives import pack_uint32_le',
-        'from rosbags.serde.primitives import pack_uint64_le',
-        'from rosbags.serde.primitives import pack_float32_le',
-        'from rosbags.serde.primitives import pack_float64_le',
         'from rosbags.serde.primitives import unpack_int32_le',
         f'def {funcname}(input, ipos, output, opos):',
     ]
@@ -89,11 +79,11 @@ def generate_ros1_to_cdr(fields: List[Field], typename: str, copy: bool) -> Call
                 aligned = size
 
         elif desc.valtype == Valtype.ARRAY:
-            subdesc = desc.args[1]
+            subdesc, length = desc.args
 
             if subdesc.valtype == Valtype.BASE:
                 if subdesc.args == 'string':
-                    for _ in range(desc.args[0]):
+                    for _ in range(length):
                         lines.append('  opos = (opos + 4 - 1) & -4')
                         lines.append('  length = unpack_int32_le(input, ipos)[0] + 1')
                         if copy:
@@ -108,7 +98,7 @@ def generate_ros1_to_cdr(fields: List[Field], typename: str, copy: bool) -> Call
                         lines.append('  opos += length')
                     aligned = 1
                 else:
-                    size = desc.args[0] * SIZEMAP[subdesc.args]
+                    size = length * SIZEMAP[subdesc.args]
                     if copy:
                         lines.append(f'  output[opos:opos + {size}] = input[ipos:ipos + {size}]')
                     lines.append(f'  ipos += {size}')
@@ -120,7 +110,7 @@ def generate_ros1_to_cdr(fields: List[Field], typename: str, copy: bool) -> Call
                 anext_after = align_after(subdesc)
 
                 lines.append(f'  func = get_msgdef("{subdesc.args.name}").{funcname}')
-                for _ in range(desc.args[0]):
+                for _ in range(length):
                     if anext > anext_after:
                         lines.append(f'  opos = (opos + {anext} - 1) & -{anext}')
                     lines.append('  ipos, opos = func(input, ipos, output, opos)')
@@ -132,7 +122,7 @@ def generate_ros1_to_cdr(fields: List[Field], typename: str, copy: bool) -> Call
                 lines.append('  pack_int32_le(output, opos, size)')
             lines.append('  ipos += 4')
             lines.append('  opos += 4')
-            subdesc = desc.args
+            subdesc = desc.args[0]
             aligned = 4
 
             if subdesc.valtype == Valtype.BASE:

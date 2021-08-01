@@ -6,11 +6,13 @@ from __future__ import annotations
 
 from enum import IntEnum
 from importlib.util import module_from_spec, spec_from_loader
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from types import ModuleType
-    from typing import Any, Dict, List
+    from typing import Dict, List
+
+    from .typing import Descriptor
 
 
 class Valtype(IntEnum):
@@ -20,13 +22,6 @@ class Valtype(IntEnum):
     MESSAGE = 2
     ARRAY = 3
     SEQUENCE = 4
-
-
-class Descriptor(NamedTuple):
-    """Value type descriptor."""
-
-    valtype: Valtype
-    args: Any  # Union[Descriptor, Msgdef, Tuple[int, Descriptor], str]
 
 
 SIZEMAP: Dict[str, int] = {
@@ -61,7 +56,7 @@ def align(entry: Descriptor) -> int:
     if entry.valtype == Valtype.MESSAGE:
         return align(entry.args.fields[0].descriptor)
     if entry.valtype == Valtype.ARRAY:
-        return align(entry.args[1])
+        return align(entry.args[0])
     assert entry.valtype == Valtype.SEQUENCE
     return 4
 
@@ -83,9 +78,9 @@ def align_after(entry: Descriptor) -> int:
     if entry.valtype == Valtype.MESSAGE:
         return align_after(entry.args.fields[-1].descriptor)
     if entry.valtype == Valtype.ARRAY:
-        return align_after(entry.args[1])
+        return align_after(entry.args[0])
     assert entry.valtype == Valtype.SEQUENCE
-    return min([4, align_after(entry.args)])
+    return min([4, align_after(entry.args[0])])
 
 
 def compile_lines(lines: List[str]) -> ModuleType:

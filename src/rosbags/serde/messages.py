@@ -10,12 +10,11 @@ from rosbags.typesys import types
 
 from .cdr import generate_deserialize_cdr, generate_getsize_cdr, generate_serialize_cdr
 from .ros1 import generate_ros1_to_cdr
-from .typing import Field, Msgdef
-from .utils import Descriptor, Valtype
+from .typing import Descriptor, Field, Msgdef
+from .utils import Valtype
 
 if TYPE_CHECKING:
     from typing import Any, Dict
-
 
 MSGDEFCACHE: Dict[str, Msgdef] = {}
 
@@ -37,7 +36,7 @@ def get_msgdef(typename: str) -> Msgdef:
 
     """
     if typename not in MSGDEFCACHE:
-        entries = types.FIELDDEFS[typename]
+        entries = types.FIELDDEFS[typename][1]
 
         def fixup(entry: Any) -> Descriptor:
             if entry[0] == Valtype.BASE:
@@ -45,9 +44,9 @@ def get_msgdef(typename: str) -> Msgdef:
             if entry[0] == Valtype.MESSAGE:
                 return Descriptor(Valtype.MESSAGE, get_msgdef(entry[1]))
             if entry[0] == Valtype.ARRAY:
-                return Descriptor(Valtype.ARRAY, (entry[1], fixup(entry[2])))
+                return Descriptor(Valtype.ARRAY, (fixup(entry[1][0]), entry[1][1]))
             if entry[0] == Valtype.SEQUENCE:
-                return Descriptor(Valtype.SEQUENCE, fixup(entry[1]))
+                return Descriptor(Valtype.SEQUENCE, (fixup(entry[1][0]), entry[1][1]))
             raise SerdeError(  # pragma: no cover
                 f'Unknown field type {entry[0]!r} encountered.',
             )

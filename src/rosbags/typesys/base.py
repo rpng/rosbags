@@ -8,12 +8,14 @@ from enum import IntEnum, auto
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Tuple
+    from typing import Any, Dict, List, Optional, Tuple, Union
 
     from .peg import Visitor
 
-    Fielddefs = List[Tuple[Any, Any]]
-    Typesdict = Dict[str, Fielddefs]
+    Constdefs = List[Tuple[str, str, Any]]
+    Fielddesc = Tuple[int, Union[str, Tuple[Tuple[int, str], Optional[int]]]]
+    Fielddefs = List[Tuple[str, Fielddesc]]
+    Typesdict = Dict[str, Tuple[Constdefs, Fielddefs]]
 
 
 class TypesysError(Exception):

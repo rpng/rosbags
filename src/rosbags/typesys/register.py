@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 import sys
 from importlib.util import module_from_spec, spec_from_loader
@@ -37,7 +36,7 @@ def get_typehint(desc: tuple) -> str:
     if desc[0] == Nodetype.NAME:
         return desc[1].replace('/', '__')
 
-    sub = desc[2 if desc[0] == Nodetype.ARRAY else 1]
+    sub = desc[1][0]
     if INTLIKE.match(sub[1]):
         typ = 'bool8' if sub[1] == 'bool' else sub[1]
         return f'numpy.ndarray[Any, numpy.dtype[numpy.{typ}]]'
@@ -71,21 +70,27 @@ def generate_python_code(typs: Typesdict) -> str:
         'from typing import TYPE_CHECKING',
         '',
         'if TYPE_CHECKING:',
-        '    from typing import Any',
+        '    from typing import Any, ClassVar',
         '',
         '    import numpy',
         '',
+        '    from .base import Typesdict',
         '',
     ]
 
-    for name, fields in typs.items():
+    for name, (consts, fields) in typs.items():
         pyname = name.replace('/', '__')
         lines += [
             '@dataclass',
             f'class {pyname}:',
             f'    """Class for {name}."""',
             '',
-            *[f'    {fname[1]}: {get_typehint(desc)}' for desc, fname in fields],
+            *[f'    {fname}: {get_typehint(desc)}' for fname, desc in fields],
+            *[
+                f'    {fname}: ClassVar[{get_typehint((1, ftype))}] = {fvalue}'
+                for fname, ftype, fvalue in consts
+            ],
+            f'    __msgtype__: ClassVar[str] = {name!r}',
         ]
 
         lines += [
@@ -93,16 +98,20 @@ def generate_python_code(typs: Typesdict) -> str:
             '',
         ]
 
-    lines += ['FIELDDEFS = {']
-    for name, fields in typs.items():
+    def get_ftype(ftype: tuple) -> tuple:
+        if ftype[0] <= 2:
+            return int(ftype[0]), ftype[1]
+        return int(ftype[0]), ((int(ftype[1][0][0]), ftype[1][0][1]), ftype[1][1])
+
+    lines += ['FIELDDEFS: Typesdict = {']
+    for name, (consts, fields) in typs.items():
         pyname = name.replace('/', '__')
         lines += [
-            f'    \'{name}\': [',
-            *[
-                f'        ({repr(fname[1])}, {json.loads(json.dumps(ftype))}),'
-                for ftype, fname in fields
-            ],
-            '    ],',
+            f'    \'{name}\': ([',
+            *[f'        ({fname!r}, {ftype!r}, {fvalue!r}),' for fname, ftype, fvalue in consts],
+            '    ], [',
+            *[f'        ({fname!r}, {get_ftype(ftype)!r}),' for fname, ftype in fields],
+            '    ]),',
         ]
     lines += [
         '}',
@@ -127,15 +136,16 @@ def register_types(typs: Typesdict) -> None:
     module = module_from_spec(spec)
     sys.modules[name] = module
     exec(code, module.__dict__)  # pylint: disable=exec-used
-    fielddefs = module.FIELDDEFS  # type: ignore
+    fielddefs: Typesdict = module.FIELDDEFS  # type: ignore
 
-    for name, fields in fielddefs.items():
+    for name, (_, fields) in fielddefs.items():
         if name == 'std_msgs/msg/Header':
             continue
         if have := types.FIELDDEFS.get(name):
-            have = [(x[0].lower(), x[1]) for x in have]
+            _, have_fields = have
+            have_fields = [(x[0].lower(), x[1]) for x in have_fields]
             fields = [(x[0].lower(), x[1]) for x in fields]
-            if have != fields:
+            if have_fields != fields:
                 raise TypesysError(f'Type {name!r} is already present with different definition.')
 
     for name in fielddefs.keys() - types.FIELDDEFS.keys():

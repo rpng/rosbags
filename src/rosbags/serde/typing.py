@@ -7,9 +7,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, List  # pylint: disable=ungrouped-imports
+    from typing import Any, Callable, List
 
-    from .utils import Descriptor
+
+class Descriptor(NamedTuple):
+    """Value type descriptor."""
+
+    valtype: int
+    args: Any
 
 
 class Field(NamedTuple):
