@@ -10,9 +10,10 @@ from unittest.mock import MagicMock, patch
 import numpy
 import pytest
 
-from rosbags.serde import SerdeError, deserialize_cdr, ros1_to_cdr, serialize_cdr
+from rosbags.serde import SerdeError, cdr_to_ros1, deserialize_cdr, ros1_to_cdr, serialize_cdr
 from rosbags.serde.messages import get_msgdef
 from rosbags.typesys import get_types_from_msg, register_types
+from rosbags.typesys.types import builtin_interfaces__msg__Time, std_msgs__msg__Header
 
 from .cdr import deserialize, serialize
 
@@ -380,3 +381,30 @@ def test_ros1_to_cdr():
         b'\x00\x00\x00\x00\x00\x00\x00\x02'
     )
     assert ros1_to_cdr(msg_ros, 'test_msgs/msg/dynamic_s_64') == msg_cdr
+
+
+def test_cdr_to_ros1():
+    """Test CDR to ROS1 conversion."""
+    register_types(dict(get_types_from_msg(STATIC_16_64, 'test_msgs/msg/static_16_64')))
+    msg_ros = (b'\x01\x00' b'\x00\x00\x00\x00\x00\x00\x00\x02')
+    msg_cdr = (
+        b'\x00\x01\x00\x00'
+        b'\x01\x00'
+        b'\x00\x00\x00\x00\x00\x00'
+        b'\x00\x00\x00\x00\x00\x00\x00\x02'
+    )
+    assert cdr_to_ros1(msg_cdr, 'test_msgs/msg/static_16_64') == msg_ros
+
+    register_types(dict(get_types_from_msg(DYNAMIC_S_64, 'test_msgs/msg/dynamic_s_64')))
+    msg_ros = (b'\x01\x00\x00\x00X' b'\x00\x00\x00\x00\x00\x00\x00\x02')
+    msg_cdr = (
+        b'\x00\x01\x00\x00'
+        b'\x02\x00\x00\x00X\x00'
+        b'\x00\x00'
+        b'\x00\x00\x00\x00\x00\x00\x00\x02'
+    )
+    assert cdr_to_ros1(msg_cdr, 'test_msgs/msg/dynamic_s_64') == msg_ros
+
+    header = std_msgs__msg__Header(stamp=builtin_interfaces__msg__Time(42, 666), frame_id='frame')
+    msg_ros = cdr_to_ros1(serialize_cdr(header, 'std_msgs/msg/Header'), 'std_msgs/msg/Header')
+    assert msg_ros == b'\x00\x00\x00\x00*\x00\x00\x00\x9a\x02\x00\x00\x05\x00\x00\x00frame'

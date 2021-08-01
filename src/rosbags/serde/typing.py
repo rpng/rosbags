@@ -38,3 +38,5 @@ class Msgdef(NamedTuple):
     deserialize_cdr_be: Callable
     getsize_ros1_to_cdr: Callable
     ros1_to_cdr: Callable
+    getsize_cdr_to_ros1: Callable
+    cdr_to_ros1: Callable

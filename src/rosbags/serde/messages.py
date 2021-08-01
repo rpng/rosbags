@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from rosbags.typesys import types
 
 from .cdr import generate_deserialize_cdr, generate_getsize_cdr, generate_serialize_cdr
-from .ros1 import generate_ros1_to_cdr
+from .ros1 import generate_cdr_to_ros1, generate_ros1_to_cdr
 from .typing import Descriptor, Field, Msgdef
 from .utils import Valtype
 
@@ -67,5 +67,7 @@ def get_msgdef(typename: str) -> Msgdef:
             generate_deserialize_cdr(fields, 'be'),
             generate_ros1_to_cdr(fields, typename, False),
             generate_ros1_to_cdr(fields, typename, True),
+            generate_cdr_to_ros1(fields, typename, False),
+            generate_cdr_to_ros1(fields, typename, True),
         )
     return MSGDEFCACHE[typename]

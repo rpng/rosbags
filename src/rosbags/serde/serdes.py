@@ -100,3 +100,44 @@ def ros1_to_cdr(raw: bytes, typename: str) -> memoryview:
     assert ipos == len(raw)
     assert opos + 4 == size
     return rawdata.toreadonly()
+
+
+def cdr_to_ros1(raw: bytes, typename: str) -> memoryview:
+    """Convert serialized CDR message directly to ROS1.
+
+    This should be reasonably fast as conversions happen on a byte-level
+    without going through deserialization and serialization.
+
+    Args:
+        raw: CDR serialized message.
+        typename: Message type name.
+
+    Returns:
+        ROS1 serialized message.
+
+    """
+    assert raw[1] == 1, 'Message byte order is not little endian'
+
+    msgdef = get_msgdef(typename)
+
+    ipos, opos = msgdef.getsize_cdr_to_ros1(
+        raw[4:],
+        0,
+        None,
+        0,
+    )
+    assert ipos + 4 == len(raw)
+
+    raw = memoryview(raw)
+    size = opos
+    rawdata = memoryview(bytearray(size))
+
+    ipos, opos = msgdef.cdr_to_ros1(
+        raw[4:],
+        0,
+        rawdata,
+        0,
+    )
+    assert ipos + 4 == len(raw)
+    assert opos == size
+    return rawdata.toreadonly()
