@@ -18,11 +18,12 @@ Supported formats:
 
 from .base import TypesysError
 from .idl import get_types_from_idl
-from .msg import get_types_from_msg
+from .msg import generate_msgdef, get_types_from_msg
 from .register import register_types
 
 __all__ = [
     'TypesysError',
+    'generate_msgdef',
     'get_types_from_idl',
     'get_types_from_msg',
     'register_types',

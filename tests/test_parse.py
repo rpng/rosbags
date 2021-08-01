@@ -4,7 +4,13 @@
 
 import pytest
 
-from rosbags.typesys import TypesysError, get_types_from_idl, get_types_from_msg, register_types
+from rosbags.typesys import (
+    TypesysError,
+    generate_msgdef,
+    get_types_from_idl,
+    get_types_from_msg,
+    register_types,
+)
 from rosbags.typesys.base import Nodetype
 from rosbags.typesys.types import FIELDDEFS
 
@@ -181,3 +187,42 @@ def test_register_types():
 
     with pytest.raises(TypesysError, match='different definition'):
         register_types({'foo': [[], [('x', (1, 'bool'))]]})
+
+
+def test_generate_msgdef():
+    """Test message definition generator."""
+    res = generate_msgdef('std_msgs/msg/Header')
+    assert res == ('uint32 seq\ntime stamp\nstring frame_id\n', '2176decaecbce78abc3b96ef049fabed')
+
+    res = generate_msgdef('geometry_msgs/msg/PointStamped')
+    assert res[0].split(f'{"=" * 80}\n') == [
+        'std_msgs/Header header\ngeometry_msgs/Point point\n',
+        'MSG: std_msgs/Header\nuint32 seq\ntime stamp\nstring frame_id\n',
+        'MSG: geometry_msgs/Point\nfloat64 x\nfloat64 y\nfloat64 z\n',
+    ]
+
+    res = generate_msgdef('geometry_msgs/msg/Twist')
+    assert res[0].split(f'{"=" * 80}\n') == [
+        'geometry_msgs/Vector3 linear\ngeometry_msgs/Vector3 angular\n',
+        'MSG: geometry_msgs/Vector3\nfloat64 x\nfloat64 y\nfloat64 z\n',
+    ]
+
+    res = generate_msgdef('shape_msgs/msg/Mesh')
+    assert res[0].split(f'{"=" * 80}\n') == [
+        'shape_msgs/MeshTriangle[] triangles\ngeometry_msgs/Point[] vertices\n',
+        'MSG: shape_msgs/MeshTriangle\nuint32[3] vertex_indices\n',
+        'MSG: geometry_msgs/Point\nfloat64 x\nfloat64 y\nfloat64 z\n',
+    ]
+
+    res = generate_msgdef('shape_msgs/msg/Plane')
+    assert res[0] == 'float64[4] coef\n'
+
+    res = generate_msgdef('sensor_msgs/msg/MultiEchoLaserScan')
+    assert len(res[0].split('=' * 80)) == 3
+
+    register_types(get_types_from_msg('time[3] times\nuint8 foo=42', 'foo_msgs/Timelist'))
+    res = generate_msgdef('foo_msgs/msg/Timelist')
+    assert res[0] == 'uint8 foo=42\ntime[3] times\n'
+
+    with pytest.raises(TypesysError, match='is unknown'):
+        generate_msgdef('foo_msgs/msg/Badname')
