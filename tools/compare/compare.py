@@ -1,6 +1,6 @@
 # Copyright 2020-2021  Ternaris.
 # SPDX-License-Identifier: Apache-2.0
-"""Tool checking if Rosbag1 and Rosbag2 contents are equal."""
+"""Tool checking if contents of two rosbags are equal."""
 
 # pylint: disable=import-error
 
@@ -9,6 +9,7 @@ from __future__ import annotations
 import array
 import math
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import Mock
 
@@ -24,15 +25,15 @@ rosgraph_msgs.msg.TopicStatistics = Mock()
 import rosbag.bag  # type:ignore  # noqa: E402  pylint: disable=wrong-import-position
 
 if TYPE_CHECKING:
-    from typing import Any, List
+    from typing import Any, List, Union
 
     from rosbag.bag import _Connection_Info
 
 
 class Reader:  # pylint: disable=too-few-public-methods
-    """Mimimal shim using rosbag2_py to emulate rosbag2 API."""
+    """Mimimal shim using rosbag2_py to emulate rosbags API."""
 
-    def __init__(self, path: str):
+    def __init__(self, path: Union[str, Path]):
         """Initialize reader shim."""
         self.reader = SequentialReader()
         self.reader.open(StorageOptions(path, 'sqlite3'), ConverterOptions('', ''))
@@ -106,7 +107,32 @@ def compare(ref: Any, msg: Any):
         assert ref == msg
 
 
-def main(path1: str, path2: str):
+def main_bag1_bag1(path1: Path, path2: Path):
+    """Compare rosbag1 to rosbag1 message by message.
+
+    Args:
+        path1: Rosbag1 filename.
+        path2: Rosbag1 filename.
+
+    """
+    reader1 = rosbag.bag.Bag(path1)
+    reader2 = rosbag.bag.Bag(path2)
+    src1 = reader1.read_messages(raw=True, return_connection_header=True)
+    src2 = reader2.read_messages(raw=True, return_connection_header=True)
+
+    for msg1, msg2 in zip(src1, src2):
+        assert msg1.connection_header == msg2.connection_header
+        assert msg1.message[:-2] == msg2.message[:-2]
+        assert msg1.timestamp == msg2.timestamp
+        assert msg1.topic == msg2.topic
+
+    assert next(src1, None) is None
+    assert next(src2, None) is None
+
+    print('Bags are identical.')  # noqa: T001
+
+
+def main_bag1_bag2(path1: Path, path2: Path):
     """Compare rosbag1 to rosbag2 message by message.
 
     Args:
@@ -135,4 +161,7 @@ if __name__ == '__main__':
     if len(sys.argv) != 3:
         print(f'Usage: {sys.argv} [rosbag1] [rosbag2]')  # noqa: T001
         sys.exit(1)
-    main(sys.argv[1], sys.argv[2])
+    arg1 = Path(sys.argv[1])
+    arg2 = Path(sys.argv[2])
+    main = main_bag1_bag2 if arg2.is_dir() else main_bag1_bag1
+    main(arg1, arg2)
