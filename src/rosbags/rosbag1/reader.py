@@ -23,19 +23,7 @@ from rosbags.typesys.msg import normalize_msgtype
 
 if TYPE_CHECKING:
     from types import TracebackType
-    from typing import (
-        BinaryIO,
-        Callable,
-        Dict,
-        Generator,
-        Iterable,
-        List,
-        Literal,
-        Optional,
-        Tuple,
-        Type,
-        Union,
-    )
+    from typing import BinaryIO, Callable, Generator, Iterable, Literal, Optional, Type, Union
 
 
 class ReaderError(Exception):
@@ -71,7 +59,7 @@ class Connection(NamedTuple):
     msgdef: str
     callerid: Optional[str]
     latching: Optional[int]
-    indexes: List
+    indexes: list
 
 
 class ChunkInfo(NamedTuple):
@@ -80,7 +68,7 @@ class ChunkInfo(NamedTuple):
     pos: int
     start_time: int
     end_time: int
-    connection_counts: Dict[int, int]
+    connection_counts: dict[int, int]
 
 
 class Chunk(NamedTuple):
@@ -107,11 +95,11 @@ class IndexData(NamedTuple):
     chunk_pos: int
     offset: int
 
-    def __lt__(self, other: Tuple[int, ...]) -> bool:
+    def __lt__(self, other: tuple[int, ...]) -> bool:
         """Compare by time only."""
         return self.time < other[0]
 
-    def __le__(self, other: Tuple[int, ...]) -> bool:
+    def __le__(self, other: tuple[int, ...]) -> bool:
         """Compare by time only."""
         return self.time <= other[0]
 
@@ -121,11 +109,11 @@ class IndexData(NamedTuple):
             return NotImplemented
         return self.time == other[0]
 
-    def __ge__(self, other: Tuple[int, ...]) -> bool:
+    def __ge__(self, other: tuple[int, ...]) -> bool:
         """Compare by time only."""
         return self.time >= other[0]
 
-    def __gt__(self, other: Tuple[int, ...]) -> bool:
+    def __gt__(self, other: tuple[int, ...]) -> bool:
         """Compare by time only."""
         return self.time > other[0]
 
@@ -371,11 +359,11 @@ class Reader:
             raise ReaderError(f'File {str(self.path)!r} does not exist.')
 
         self.bio: Optional[BinaryIO] = None
-        self.connections: Dict[int, Connection] = {}
-        self.chunk_infos: List[ChunkInfo] = []
-        self.chunks: Dict[int, Chunk] = {}
+        self.connections: dict[int, Connection] = {}
+        self.chunk_infos: list[ChunkInfo] = []
+        self.chunks: dict[int, Chunk] = {}
         self.current_chunk = (-1, BytesIO())
-        self.topics: Dict[str, TopicInfo] = {}
+        self.topics: dict[str, TopicInfo] = {}
 
     def open(self):  # pylint: disable=too-many-branches,too-many-locals
         """Open rosbag and read metadata."""
@@ -480,7 +468,7 @@ class Reader:
         """Total message count."""
         return reduce(lambda x, y: x + y, (x.msgcount for x in self.topics.values()), 0)
 
-    def read_connection(self) -> Tuple[int, Connection]:
+    def read_connection(self) -> tuple[int, Connection]:
         """Read connection record from current position."""
         assert self.bio
         header = Header.read(self.bio, RecordType.CONNECTION)
@@ -552,7 +540,7 @@ class Reader:
             decompressor,
         )
 
-    def read_index_data(self, pos: int) -> Tuple[int, List[IndexData]]:
+    def read_index_data(self, pos: int) -> tuple[int, list[IndexData]]:
         """Read index data from position.
 
         Args:
@@ -576,7 +564,7 @@ class Reader:
 
         self.bio.seek(4, os.SEEK_CUR)
 
-        index: List[IndexData] = []
+        index: list[IndexData] = []
         for _ in range(count):
             time = deserialize_time(self.bio.read(8))
             offset = read_uint32(self.bio)
@@ -588,7 +576,7 @@ class Reader:
         topics: Optional[Iterable[str]] = None,
         start: Optional[int] = None,
         stop: Optional[int] = None,
-    ) -> Generator[Tuple[Connection, int, bytes], None, None]:
+    ) -> Generator[tuple[Connection, int, bytes], None, None]:
         """Read messages from bag.
 
         Args:

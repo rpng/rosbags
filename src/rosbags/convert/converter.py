@@ -15,7 +15,7 @@ from rosbags.typesys import get_types_from_msg, register_types
 
 if TYPE_CHECKING:
     from pathlib import Path
-    from typing import Any, Dict, Optional
+    from typing import Any, Optional
 
     from rosbags.rosbag1.reader import Connection as RConnection
 
@@ -80,8 +80,8 @@ def convert(src: Path, dst: Optional[Path]) -> None:
 
     try:
         with Reader(src) as reader, Writer(dst) as writer:
-            typs: Dict[str, Any] = {}
-            connmap: Dict[int, WConnection] = {}
+            typs: dict[str, Any] = {}
+            connmap: dict[int, WConnection] = {}
 
             for rconn in reader.connections.values():
                 candidate = convert_connection(rconn)

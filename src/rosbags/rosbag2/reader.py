@@ -17,7 +17,7 @@ from .connection import Connection
 
 if TYPE_CHECKING:
     from types import TracebackType
-    from typing import Any, Dict, Generator, Iterable, List, Literal, Optional, Tuple, Type, Union
+    from typing import Any, Generator, Iterable, Literal, Optional, Type, Union
 
 
 class ReaderError(Exception):
@@ -162,7 +162,7 @@ class Reader:
         return mode if mode != 'none' else None
 
     @property
-    def topics(self) -> Dict[str, Connection]:
+    def topics(self) -> dict[str, Connection]:
         """Topic information.
 
         For the moment this a dictionary mapping topic names to connections.
@@ -175,7 +175,7 @@ class Reader:
         connections: Iterable[Connection] = (),
         start: Optional[int] = None,
         stop: Optional[int] = None,
-    ) -> Generator[Tuple[Connection, int, bytes], None, None]:
+    ) -> Generator[tuple[Connection, int, bytes], None, None]:
         """Read messages from bag.
 
         Args:
@@ -185,7 +185,7 @@ class Reader:
             stop: Yield only messages before this timestamp (ns).
 
         Yields:
-            Tuples of connection, timestamp (ns), and rawdata.
+            tuples of connection, timestamp (ns), and rawdata.
 
         Raises:
             ReaderError: Bag not open.
@@ -198,7 +198,7 @@ class Reader:
             'SELECT topics.id,messages.timestamp,messages.data',
             'FROM messages JOIN topics ON messages.topic_id=topics.id',
         ]
-        args: List[Any] = []
+        args: list[Any] = []
         clause = 'WHERE'
 
         if connections:

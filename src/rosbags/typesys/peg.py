@@ -14,7 +14,7 @@ import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Optional, Tuple
+    from typing import Any, Optional
 
 
 class Rule:
@@ -23,7 +23,7 @@ class Rule:
     LIT = 'LITERAL'
     WS = re.compile(r'\s+', re.M | re.S)
 
-    def __init__(self, value: Any, rules: Dict[str, Rule], name: Optional[str] = None):
+    def __init__(self, value: Any, rules: dict[str, Rule], name: Optional[str] = None):
         """Initialize.
 
         Args:
@@ -58,7 +58,7 @@ class Rule:
 class RuleLiteral(Rule):
     """Rule to match string literal."""
 
-    def __init__(self, value: Any, rules: Dict[str, Rule], name: Optional[str] = None):
+    def __init__(self, value: Any, rules: dict[str, Rule], name: Optional[str] = None):
         """Initialize.
 
         Args:
@@ -70,7 +70,7 @@ class RuleLiteral(Rule):
         super().__init__(value, rules, name)
         self.value = value[1:-1].replace('\\\'', '\'')
 
-    def parse(self, text: str, pos: int) -> Tuple[int, Any]:
+    def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
         value = self.value
         if text[pos:pos + len(value)] == value:
@@ -83,7 +83,7 @@ class RuleLiteral(Rule):
 class RuleRegex(Rule):
     """Rule to match regular expression."""
 
-    def __init__(self, value: Any, rules: Dict[str, Rule], name: Optional[str] = None):
+    def __init__(self, value: Any, rules: dict[str, Rule], name: Optional[str] = None):
         """Initialize.
 
         Args:
@@ -95,7 +95,7 @@ class RuleRegex(Rule):
         super().__init__(value, rules, name)
         self.value = re.compile(value[2:-1], re.M | re.S)
 
-    def parse(self, text: str, pos: int) -> Tuple[int, Any]:
+    def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
         match = self.value.match(text, pos)
         if not match:
@@ -107,7 +107,7 @@ class RuleRegex(Rule):
 class RuleToken(Rule):
     """Rule to match token."""
 
-    def parse(self, text: str, pos: int) -> Tuple[int, Any]:
+    def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
         token = self.rules[self.value]
         npos, data = token.parse(text, pos)
@@ -119,7 +119,7 @@ class RuleToken(Rule):
 class RuleOneof(Rule):
     """Rule to match first matching subrule."""
 
-    def parse(self, text: str, pos: int) -> Tuple[int, Any]:
+    def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
         for value in self.value:
             npos, data = value.parse(text, pos)
@@ -131,7 +131,7 @@ class RuleOneof(Rule):
 class RuleSequence(Rule):
     """Rule to match a sequence of subrules."""
 
-    def parse(self, text: str, pos: int) -> Tuple[int, Any]:
+    def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
         data = []
         npos = pos
@@ -146,9 +146,9 @@ class RuleSequence(Rule):
 class RuleZeroPlus(Rule):
     """Rule to match zero or more occurences of subrule."""
 
-    def parse(self, text: str, pos: int) -> Tuple[int, Any]:
+    def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
-        data: List[Any] = []
+        data: list[Any] = []
         lpos = pos
         while True:
             npos, node = self.value.parse(text, lpos)
@@ -161,7 +161,7 @@ class RuleZeroPlus(Rule):
 class RuleOnePlus(Rule):
     """Rule to match one or more occurences of subrule."""
 
-    def parse(self, text: str, pos: int) -> Tuple[int, Any]:
+    def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
         npos, node = self.value.parse(text, pos)
         if npos == -1:
@@ -179,7 +179,7 @@ class RuleOnePlus(Rule):
 class RuleZeroOne(Rule):
     """Rule to match zero or one occurence of subrule."""
 
-    def parse(self, text: str, pos: int) -> Tuple[int, Any]:
+    def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
         npos, node = self.value.parse(text, pos)
         if npos == -1:
@@ -190,7 +190,7 @@ class RuleZeroOne(Rule):
 class Visitor:  # pylint: disable=too-few-public-methods
     """Visitor transforming parse trees."""
 
-    RULES: Dict[str, Rule] = {}
+    RULES: dict[str, Rule] = {}
 
     def __init__(self):
         """Initialize."""
@@ -208,15 +208,15 @@ class Visitor:  # pylint: disable=too-few-public-methods
         return func(tree['data'])
 
 
-def split_token(tok: str) -> List[str]:
+def split_token(tok: str) -> list[str]:
     """Split repetition and grouping tokens."""
     return list(filter(None, re.split(r'(^\()|(\)(?=[*+?]?$))|([*+?]$)', tok)))
 
 
-def collapse_tokens(toks: List[Optional[Rule]], rules: Dict[str, Rule]) -> Rule:
+def collapse_tokens(toks: list[Optional[Rule]], rules: dict[str, Rule]) -> Rule:
     """Collapse linear list of tokens to oneof of sequences."""
-    value: List[Rule] = []
-    seq: List[Rule] = []
+    value: list[Rule] = []
+    seq: list[Rule] = []
     for tok in toks:
         if tok:
             seq.append(tok)
@@ -227,9 +227,9 @@ def collapse_tokens(toks: List[Optional[Rule]], rules: Dict[str, Rule]) -> Rule:
     return RuleOneof(value, rules) if len(value) > 1 else value[0]
 
 
-def parse_grammar(grammar: str) -> Dict[str, Rule]:
+def parse_grammar(grammar: str) -> dict[str, Rule]:
     """Parse grammar into rule dictionary."""
-    rules: Dict[str, Rule] = {}
+    rules: dict[str, Rule] = {}
     for token in grammar.split('\n\n'):
         lines = token.strip().split('\n')
         name, *defs = lines
@@ -237,8 +237,8 @@ def parse_grammar(grammar: str) -> Dict[str, Rule]:
         assert items
         assert items[0] == '='
         items.pop(0)
-        stack: List[Optional[Rule]] = []
-        parens: List[int] = []
+        stack: list[Optional[Rule]] = []
+        parens: list[int] = []
         while items:
             tok = items.pop(0)
             if tok in ['*', '+', '?']:

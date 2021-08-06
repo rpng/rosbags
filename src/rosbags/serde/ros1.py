@@ -12,16 +12,16 @@ conversion of ROS1 to CDR.
 from __future__ import annotations
 
 from itertools import tee
-from typing import TYPE_CHECKING, Iterator, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Iterator, cast
 
 from .typing import Field
 from .utils import SIZEMAP, Valtype, align, align_after, compile_lines
 
 if TYPE_CHECKING:
-    from typing import Callable, List  # pylint: disable=ungrouped-imports
+    from typing import Callable  # pylint: disable=ungrouped-imports
 
 
-def generate_ros1_to_cdr(fields: List[Field], typename: str, copy: bool) -> Callable:
+def generate_ros1_to_cdr(fields: list[Field], typename: str, copy: bool) -> Callable:
     """Generate ROS1 to CDR conversion function.
 
     Args:
@@ -35,7 +35,9 @@ def generate_ros1_to_cdr(fields: List[Field], typename: str, copy: bool) -> Call
     """
     # pylint: disable=too-many-branches,too-many-locals,too-many-nested-blocks,too-many-statements
     aligned = 8
-    icurr, inext = cast(Tuple[Iterator[Field], Iterator[Optional[Field]]], tee([*fields, None]))
+    iterators = tee([*fields, None])
+    icurr = cast(Iterator[Field], iterators[0])
+    inext = iterators[1]
     next(inext)
     funcname = 'ros1_to_cdr' if copy else 'getsize_ros1_to_cdr'
     lines = [
@@ -170,7 +172,7 @@ def generate_ros1_to_cdr(fields: List[Field], typename: str, copy: bool) -> Call
     return getattr(compile_lines(lines), funcname)
 
 
-def generate_cdr_to_ros1(fields: List[Field], typename: str, copy: bool) -> Callable:
+def generate_cdr_to_ros1(fields: list[Field], typename: str, copy: bool) -> Callable:
     """Generate CDR to ROS1 conversion function.
 
     Args:
@@ -184,7 +186,9 @@ def generate_cdr_to_ros1(fields: List[Field], typename: str, copy: bool) -> Call
     """
     # pylint: disable=too-many-branches,too-many-locals,too-many-nested-blocks,too-many-statements
     aligned = 8
-    icurr, inext = cast(Tuple[Iterator[Field], Iterator[Optional[Field]]], tee([*fields, None]))
+    iterators = tee([*fields, None])
+    icurr = cast(Iterator[Field], iterators[0])
+    inext = iterators[1]
     next(inext)
     funcname = 'cdr_to_ros1' if copy else 'getsize_cdr_to_ros1'
     lines = [

@@ -14,9 +14,9 @@ from .typing import Descriptor, Field, Msgdef
 from .utils import Valtype
 
 if TYPE_CHECKING:
-    from typing import Any, Dict
+    from typing import Any
 
-MSGDEFCACHE: Dict[str, Msgdef] = {}
+MSGDEFCACHE: dict[str, Msgdef] = {}
 
 
 class SerdeError(Exception):

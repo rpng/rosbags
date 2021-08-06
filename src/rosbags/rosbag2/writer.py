@@ -16,7 +16,7 @@ from .connection import Connection
 
 if TYPE_CHECKING:
     from types import TracebackType
-    from typing import Any, Dict, Literal, Optional, Type, Union
+    from typing import Any, Literal, Optional, Type, Union
 
 
 class WriterError(Exception):
@@ -79,7 +79,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         self.compression_mode = ''
         self.compression_format = ''
         self.compressor: Optional[zstandard.ZstdCompressor] = None
-        self.connections: Dict[int, Connection] = {}
+        self.connections: dict[int, Connection] = {}
         self.conn = None
         self.cursor: Optional[sqlite3.Cursor] = None
 

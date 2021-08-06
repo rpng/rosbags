@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from types import ModuleType
-    from typing import Dict, List
 
     from .typing import Descriptor
 
@@ -24,7 +23,7 @@ class Valtype(IntEnum):
     SEQUENCE = 4
 
 
-SIZEMAP: Dict[str, int] = {
+SIZEMAP: dict[str, int] = {
     'bool': 1,
     'int8': 1,
     'int16': 2,
@@ -83,7 +82,7 @@ def align_after(entry: Descriptor) -> int:
     return min([4, align_after(entry.args[0])])
 
 
-def compile_lines(lines: List[str]) -> ModuleType:
+def compile_lines(lines: list[str]) -> ModuleType:
     """Compile lines of code to module.
 
     Args:

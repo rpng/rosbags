@@ -21,7 +21,7 @@ from .peg import Rule, Visitor, parse_grammar
 from .types import FIELDDEFS
 
 if TYPE_CHECKING:
-    from typing import Any, List
+    from typing import Any
 
     from .base import Fielddesc, Typesdict
 
@@ -91,7 +91,7 @@ def normalize_msgtype(name: str) -> str:
     return str(path)
 
 
-def normalize_fieldtype(typename: str, field: Fielddesc, names: List[str]) -> Fielddesc:
+def normalize_fieldtype(typename: str, field: Fielddesc, names: list[str]) -> Fielddesc:
     """Normalize field typename.
 
     Args:
@@ -235,7 +235,7 @@ def get_types_from_msg(text: str, name: str) -> Typesdict:
         name: Message typename.
 
     Returns:
-        List with single message name and parsetree.
+        list with single message name and parsetree.
 
     """
     return parse_message_definition(VisitorMSG(), f'MSG: {name}\n{text}')

@@ -13,16 +13,16 @@ from __future__ import annotations
 
 import sys
 from itertools import tee
-from typing import TYPE_CHECKING, Iterator, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Iterator, cast
 
 from .typing import Field
 from .utils import SIZEMAP, Valtype, align, align_after, compile_lines
 
 if TYPE_CHECKING:
-    from typing import Callable, List
+    from typing import Callable
 
 
-def generate_getsize_cdr(fields: List[Field]) -> Tuple[Callable, int]:
+def generate_getsize_cdr(fields: list[Field]) -> tuple[Callable, int]:
     """Generate cdr size calculation function.
 
     Args:
@@ -37,7 +37,9 @@ def generate_getsize_cdr(fields: List[Field]) -> Tuple[Callable, int]:
     is_stat = True
 
     aligned = 8
-    icurr, inext = cast(Tuple[Iterator[Field], Iterator[Optional[Field]]], tee([*fields, None]))
+    iterators = tee([*fields, None])
+    icurr = cast(Iterator[Field], iterators[0])
+    inext = iterators[1]
     next(inext)
     lines = [
         'import sys',
@@ -155,7 +157,7 @@ def generate_getsize_cdr(fields: List[Field]) -> Tuple[Callable, int]:
     return compile_lines(lines).getsize_cdr, is_stat * size  # type: ignore
 
 
-def generate_serialize_cdr(fields: List[Field], endianess: str) -> Callable:
+def generate_serialize_cdr(fields: list[Field], endianess: str) -> Callable:
     """Generate cdr serialization function.
 
     Args:
@@ -168,7 +170,9 @@ def generate_serialize_cdr(fields: List[Field], endianess: str) -> Callable:
     """
     # pylint: disable=too-many-branches,too-many-locals,too-many-statements
     aligned = 8
-    icurr, inext = cast(Tuple[Iterator[Field], Iterator[Optional[Field]]], tee([*fields, None]))
+    iterators = tee([*fields, None])
+    icurr = cast(Iterator[Field], iterators[0])
+    inext = iterators[1]
     next(inext)
     lines = [
         'import sys',
@@ -292,7 +296,7 @@ def generate_serialize_cdr(fields: List[Field], endianess: str) -> Callable:
     return compile_lines(lines).serialize_cdr  # type: ignore
 
 
-def generate_deserialize_cdr(fields: List[Field], endianess: str) -> Callable:
+def generate_deserialize_cdr(fields: list[Field], endianess: str) -> Callable:
     """Generate cdr deserialization function.
 
     Args:
@@ -305,7 +309,9 @@ def generate_deserialize_cdr(fields: List[Field], endianess: str) -> Callable:
     """
     # pylint: disable=too-many-branches,too-many-locals,too-many-nested-blocks,too-many-statements
     aligned = 8
-    icurr, inext = cast(Tuple[Iterator[Field], Iterator[Optional[Field]]], tee([*fields, None]))
+    iterators = tee([*fields, None])
+    icurr = cast(Iterator[Field], iterators[0])
+    inext = iterators[1]
     next(inext)
     lines = [
         'import sys',
