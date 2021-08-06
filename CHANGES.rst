@@ -3,6 +3,15 @@
 Changes
 =======
 
+0.9.3 - 2021-08-06
+------------------
+
+- Add const fields to type classes
+- Add CDR to ROS1 bytestream conversion
+- Add ROS1 message definiton generator
+- Use connection oriented APIs in readers and writers
+- Add rosbag1 writer
+
 0.9.2 - 2021-07-08
 ------------------
 
