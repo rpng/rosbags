@@ -14,7 +14,7 @@ Rosbags
 Rosbags is the **pure python** library for everything rosbag. It contains:
 
 - **rosbag2** reader and writer,
-- **rosbag1** reader for raw messages,
+- **rosbag1** reader and writer,
 - **extensible** type system with serializers and deserializers,
 - **efficient converter** between rosbag1 and rosbag2,
 - and more.
