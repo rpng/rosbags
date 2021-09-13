@@ -254,7 +254,8 @@ def test_reader(tmp_path):  # pylint: disable=too-many-statements
         assert msgs[0][2] == b'MSGCONTENT5'
         assert msgs[1][2] == b'MSGCONTENT10'
 
-        msgs = list(reader.messages(['/topic0']))
+        connections = [x for x in reader.connections.values() if x.topic == '/topic0']
+        msgs = list(reader.messages(connections))
         assert len(msgs) == 1
         assert msgs[0][2] == b'MSGCONTENT10'
 

@@ -55,8 +55,8 @@ class Connection(NamedTuple):
     cid: int
     topic: str
     msgtype: str
-    md5sum: str
     msgdef: str
+    md5sum: str
     callerid: Optional[str]
     latching: Optional[int]
     indexes: list
@@ -487,8 +487,8 @@ class Reader:
             conn,
             topic,
             normalize_msgtype(typ),
-            md5sum,
             msgdef,
+            md5sum,
             callerid,
             latching,
             [],
@@ -573,15 +573,15 @@ class Reader:
 
     def messages(
         self,
-        topics: Optional[Iterable[str]] = None,
+        connections: Iterable[Connection] = (),
         start: Optional[int] = None,
         stop: Optional[int] = None,
     ) -> Generator[tuple[Connection, int, bytes], None, None]:
         """Read messages from bag.
 
         Args:
-            topics: Iterable with topic names to filter for. An empty iterable
-                yields all messages.
+            connections: Iterable with connections to filter for. An empty
+                iterable disables filtering on connections.
             start: Yield only messages at or after this timestamp (ns).
             stop: Yield only messages before this timestamp (ns).
 
@@ -595,7 +595,10 @@ class Reader:
         if not self.bio:
             raise ReaderError('Rosbag is not open.')
 
-        indexes = [x.indexes for x in self.connections.values() if not topics or x.topic in topics]
+        if not connections:
+            connections = self.connections.values()
+
+        indexes = [x.indexes for x in connections]
         for entry in heapq.merge(*indexes):
             if start and entry.time < start:
                 continue
