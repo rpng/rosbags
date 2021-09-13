@@ -17,7 +17,7 @@ from .connection import Connection
 
 if TYPE_CHECKING:
     from types import TracebackType
-    from typing import Any, Generator, Iterable, Literal, Optional, Type, Union
+    from typing import Any, Dict, Generator, Iterable, Literal, Optional, Type, Union
 
 
 class ReaderError(Exception):
@@ -232,16 +232,23 @@ class Reader:
                 if cur.fetchone()[0] != 2:
                     raise ReaderError(f'Cannot open database {path} or database missing tables.')
 
+                cur.execute('SELECT name,id FROM topics')
+                connmap: Dict[int, Connection] = {
+                    row[1]: next((x for x in self.connections.values() if x.topic == row[0]),
+                                 None)  # type: ignore
+                    for row in cur
+                }
+
                 cur.execute(querystr, args)
 
                 if self.compression_mode == 'message':
                     decomp = zstandard.ZstdDecompressor().decompress
                     for row in cur:
                         cid, timestamp, data = row
-                        yield self.connections[cid], timestamp, decomp(data)
+                        yield connmap[cid], timestamp, decomp(data)
                 else:
                     for cid, timestamp, data in cur:
-                        yield self.connections[cid], timestamp, data
+                        yield connmap[cid], timestamp, data
 
     def __enter__(self) -> Reader:
         """Open rosbag2 when entering contextmanager."""
