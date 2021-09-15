@@ -3,6 +3,12 @@
 Changes
 =======
 
+0.9.4 - 2021-09-15
+------------------
+- Make reader1 API match reader2
+- Fix connection mapping for reader2 messages
+
+
 0.9.3 - 2021-08-06
 ------------------
 
@@ -12,10 +18,12 @@ Changes
 - Use connection oriented APIs in readers and writers
 - Add rosbag1 writer
 
+
 0.9.2 - 2021-07-08
 ------------------
 
 - Support relative type references in msg files
+
 
 0.9.1 - 2021-07-05
 ------------------
@@ -30,6 +38,7 @@ Changes
 
 .. _#2: https://gitlab.com/ternaris/rosbags/issues/2
 .. _#4: https://gitlab.com/ternaris/rosbags/issues/4
+
 
 0.9.0 - 2021-05-16
 ------------------
