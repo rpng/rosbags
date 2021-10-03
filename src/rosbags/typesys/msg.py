@@ -44,7 +44,8 @@ comment
   = r'#[^\n]*'
 
 const_dcl
-  = type_spec identifier '=' integer_literal
+  = 'string' identifier '=' r'[^\n]+'
+  / type_spec identifier '=' integer_literal
 
 field_dcl
   = type_spec identifier
@@ -172,7 +173,12 @@ class VisitorMSG(Visitor):
 
     def visit_const_dcl(self, children: Any) -> Any:
         """Process const declaration, suppress output."""
-        return Nodetype.CONST, (children[0][1], children[1][1], children[3])
+        typ = children[0][1]
+        if typ == 'string':
+            value = children[3].strip()
+        else:
+            value = children[3]
+        return Nodetype.CONST, (typ, children[1][1], value)
 
     def visit_specification(self, children: Any) -> Typesdict:
         """Process start symbol."""

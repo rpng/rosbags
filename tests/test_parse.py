@@ -18,6 +18,7 @@ MSG = """
 # comment
 
 int32 global=42
+string str= foo bar\t
 
 std_msgs/Header header
 std_msgs/msg/Bool bool
@@ -115,7 +116,7 @@ def test_parse_msg():
     ret = get_types_from_msg(MSG, 'test_msgs/msg/Foo')
     assert 'test_msgs/msg/Foo' in ret
     consts, fields = ret['test_msgs/msg/Foo']
-    assert consts == [('global', 'int32', 42)]
+    assert consts == [('global', 'int32', 42), ('str', 'string', 'foo bar')]
     assert fields[0][0] == 'header'
     assert fields[0][1][1] == 'std_msgs/msg/Header'
     assert fields[1][0] == 'bool'
