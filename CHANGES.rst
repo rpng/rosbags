@@ -3,6 +3,10 @@
 Changes
 =======
 
+0.9.6 - 2021-10-04
+------------------
+- Do not match msg separator as constant value
+
 0.9.5 - 2021-10-04
 ------------------
 - Add string constant support to msg parser
