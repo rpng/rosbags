@@ -44,7 +44,7 @@ comment
   = r'#[^\n]*'
 
 const_dcl
-  = 'string' identifier '=' r'[^\n]+'
+  = 'string' identifier r'=(?!={79}\n)' r'[^\n]+'
   / type_spec identifier '=' integer_literal
 
 field_dcl

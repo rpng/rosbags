@@ -45,6 +45,15 @@ uint64[3] Header
 uint32 static = 42
 """
 
+CSTRING_CONFUSION_MSG = """
+std_msgs/Header header
+string s
+
+================================================================================
+MSG: std_msgs/Header
+time time
+"""
+
 RELSIBLING_MSG = """
 Header header
 Other other
@@ -142,6 +151,18 @@ def test_parse_multi_msg():
     assert fields[2][1][1] == 'uint8'
     consts = ret['test_msgs/msg/Other'][0]
     assert consts == [('static', 'uint32', 42)]
+
+
+def test_parse_cstring_confusion():
+    """Test if msg separator is confused with const string."""
+    ret = get_types_from_msg(CSTRING_CONFUSION_MSG, 'test_msgs/msg/Foo')
+    assert len(ret) == 2
+    assert 'test_msgs/msg/Foo' in ret
+    assert 'std_msgs/msg/Header' in ret
+    consts, fields = ret['test_msgs/msg/Foo']
+    assert consts == []
+    assert fields[0][1][1] == 'std_msgs/msg/Header'
+    assert fields[1][1][1] == 'string'
 
 
 def test_parse_relative_siblings_msg():
