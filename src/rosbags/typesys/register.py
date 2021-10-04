@@ -88,7 +88,7 @@ def generate_python_code(typs: Typesdict) -> str:
             '',
             *[f'    {fname}: {get_typehint(desc)}' for fname, desc in fields],
             *[
-                f'    {fname}: ClassVar[{get_typehint((1, ftype))}] = {fvalue}'
+                f'    {fname}: ClassVar[{get_typehint((1, ftype))}] = {fvalue!r}'
                 for fname, ftype, fvalue in consts
             ],
             f'    __msgtype__: ClassVar[str] = {name!r}',
