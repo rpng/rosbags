@@ -365,7 +365,7 @@ class Reader:
         self.current_chunk = (-1, BytesIO())
         self.topics: dict[str, TopicInfo] = {}
 
-    def open(self):  # pylint: disable=too-many-branches,too-many-locals
+    def open(self):  # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """Open rosbag and read metadata."""
         try:
             self.bio = self.path.open('rb')
@@ -402,8 +402,12 @@ class Reader:
                 raise ReaderError('Bag is not indexed, reindex before reading.')
 
             self.bio.seek(index_pos)
-            self.connections = dict(self.read_connection() for _ in range(conn_count))
-            self.chunk_infos = [self.read_chunk_info() for _ in range(chunk_count)]
+            try:
+                self.connections = dict(self.read_connection() for _ in range(conn_count))
+                self.chunk_infos = [self.read_chunk_info() for _ in range(chunk_count)]
+            except ReaderError as err:
+                raise ReaderError(f'Bag index looks damaged: {err.args}') from None
+
             self.chunks = {}
             for chunk_info in self.chunk_infos:
                 self.bio.seek(chunk_info.pos)
