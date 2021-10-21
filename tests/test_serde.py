@@ -178,7 +178,9 @@ def _comparable():
     frombuffer = numpy.frombuffer
 
     def arreq(self: MagicMock, other: Union[MagicMock, Any]) -> bool:
-        return (getattr(self, '_mock_wraps') == getattr(other, '_mock_wraps', other)).all()
+        lhs = self._mock_wraps  # pylint: disable=protected-access
+        rhs = getattr(other, '_mock_wraps', other)
+        return (lhs == rhs).all()
 
     class CNDArray(MagicMock):
         """Mock ndarray."""
