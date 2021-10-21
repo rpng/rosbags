@@ -5,12 +5,13 @@
 import typing
 
 # https://github.com/sphinx-doc/sphinx/issues/9243
-import sphinx.builders.html  # noqa  pylint: disable=unused-import
-import sphinx.builders.latex  # noqa  pylint: disable=unused-import
-import sphinx.builders.texinfo  # noqa  pylint: disable=unused-import
-import sphinx.builders.text  # noqa  pylint: disable=unused-import
-import sphinx.ext.autodoc  # noqa  pylint: disable=unused-import
-import sphinx_rtd_theme  # noqa  pylint: disable=unused-import
+# pylint: disable=unused-import
+import sphinx.builders.html  # noqa
+import sphinx.builders.latex  # noqa
+import sphinx.builders.texinfo  # noqa
+import sphinx.builders.text  # noqa
+import sphinx.ext.autodoc  # noqa
+import sphinx_rtd_theme  # type: ignore  # noqa
 
 # pylint: disable=invalid-name,redefined-builtin
 
