@@ -37,6 +37,7 @@ def main() -> None:  # pragma: no cover
                 if '/msg/' not in str(name):
                     name = name.parent / 'msg' / name.name
                 typs.update(get_types_from_msg(path.read_text(encoding='utf-8'), str(name)))
+    typs = dict(sorted(typs.items()))
     register_types(typs)
     (selfdir / 'types.py').write_text(generate_python_code(typs))
 

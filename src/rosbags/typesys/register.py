@@ -76,6 +76,7 @@ def generate_python_code(typs: Typesdict) -> str:
         '',
         '    from .base import Typesdict',
         '',
+        '',
     ]
 
     for name, (consts, fields) in typs.items():
@@ -107,11 +108,21 @@ def generate_python_code(typs: Typesdict) -> str:
     for name, (consts, fields) in typs.items():
         pyname = name.replace('/', '__')
         lines += [
-            f'    \'{name}\': ([',
-            *[f'        ({fname!r}, {ftype!r}, {fvalue!r}),' for fname, ftype, fvalue in consts],
-            '    ], [',
-            *[f'        ({fname!r}, {get_ftype(ftype)!r}),' for fname, ftype in fields],
-            '    ]),',
+            f'    \'{name}\': (',
+            *(
+                [
+                    '        [',
+                    *[
+                        f'            ({fname!r}, {ftype!r}, {fvalue!r}),'
+                        for fname, ftype, fvalue in consts
+                    ],
+                    '        ],',
+                ] if consts else ['        [],']
+            ),
+            '        [',
+            *[f'            ({fname!r}, {get_ftype(ftype)!r}),' for fname, ftype in fields],
+            '        ],',
+            '    ),',
         ]
     lines += [
         '}',
