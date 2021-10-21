@@ -84,16 +84,16 @@ def compare(path: Path):
     with Reader(path) as reader:
         gens = (reader.messages(), ReaderPy(path).messages())
         for item, item_py in zip(*gens):
-            topic, msgtype, timestamp, data = item
+            connection, timestamp, data = item
             topic_py, msgtype_py, timestamp_py, data_py = item_py
 
-            assert topic == topic_py
-            assert msgtype == msgtype_py
+            assert connection.topic == topic_py
+            assert connection.msgtype == msgtype_py
             assert timestamp == timestamp_py
             assert data == data_py
 
             msg_py = deserialize_py(data_py, msgtype_py)
-            msg = deserialize_cdr(data, msgtype)
+            msg = deserialize_cdr(data, connection.msgtype)
 
             compare_msg(msg, msg_py)
         assert len(list(gens[0])) == 0
@@ -118,8 +118,8 @@ def read_deser_rosbag2_py(path: Path):
 def read_deser_rosbag2(path: Path):
     """Read testbag with rosbag2lite."""
     with Reader(path) as reader:
-        for _, msgtype, _, data in reader.messages():
-            deserialize_cdr(data, msgtype)
+        for connection, _, data in reader.messages():
+            deserialize_cdr(data, connection.msgtype)
 
 
 def main():

@@ -81,7 +81,7 @@ def test_failure_cases(tmp_path: Path):
 
     bag = Writer(tmp_path / 'write')
     with pytest.raises(WriterError, match='was not opened'):
-        bag.write('/tf', 0, b'')
+        bag.write(Connection(1, 0, '/tf', 'tf_msgs/msg/tf2', 'cdr', ''), 0, b'')
 
     bag = Writer(tmp_path / 'topic')
     bag.open()
