@@ -30,7 +30,7 @@ specification
   = msgdef (msgsep msgdef)*
 
 msgdef
-  = r'MSG:\s' scoped_name definition+
+  = r'MSG:\s' scoped_name definition*
 
 msgsep
   = r'================================================================================'

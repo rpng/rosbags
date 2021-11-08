@@ -118,10 +118,16 @@ module test_msgs {
 """
 
 
+def test_parse_empty_msg():
+    """Test msg parser with empty message."""
+    ret = get_types_from_msg('', 'std_msgs/msg/Empty')
+    assert ret == {'std_msgs/msg/Empty': ([], [])}
+
+
 def test_parse_msg():
     """Test msg parser."""
     with pytest.raises(TypesysError, match='Could not parse'):
-        get_types_from_msg('', 'test_msgs/msg/Foo')
+        get_types_from_msg('invalid', 'test_msgs/msg/Foo')
     ret = get_types_from_msg(MSG, 'test_msgs/msg/Foo')
     assert 'test_msgs/msg/Foo' in ret
     consts, fields = ret['test_msgs/msg/Foo']
