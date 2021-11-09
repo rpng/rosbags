@@ -29,6 +29,30 @@ float64[] seq2
 float64[4] array
 """
 
+MSG_BOUNDS = """
+int32[] unbounded_integer_array
+int32[5] five_integers_array
+int32[<=5] up_to_five_integers_array
+
+string string_of_unbounded_size
+string<=10 up_to_ten_characters_string
+
+string[<=5] up_to_five_unbounded_strings
+string<=10[] unbounded_array_of_string_up_to_ten_characters_each
+string<=10[<=5] up_to_five_strings_up_to_ten_characters_each
+"""
+
+MSG_DEFAULTS = """
+bool b false
+uint8 i 42
+uint8 o 0377
+uint8 h 0xff
+float32 y -314.15e-2
+string name1 "John"
+string name2 'Ringo'
+int32[] samples [-200, -100, 0, 100, 200]
+"""
+
 MULTI_MSG = """
 std_msgs/Header header
 byte b
@@ -122,6 +146,46 @@ def test_parse_empty_msg():
     """Test msg parser with empty message."""
     ret = get_types_from_msg('', 'std_msgs/msg/Empty')
     assert ret == {'std_msgs/msg/Empty': ([], [])}
+
+
+def test_parse_bounds_msg():
+    """Test msg parser."""
+    ret = get_types_from_msg(MSG_BOUNDS, 'test_msgs/msg/Foo')
+    assert ret == {
+        'test_msgs/msg/Foo': (
+            [],
+            [
+                ('unbounded_integer_array', (4, ((1, 'int32'), None))),
+                ('five_integers_array', (3, ((1, 'int32'), 5))),
+                ('up_to_five_integers_array', (4, ((1, 'int32'), None))),
+                ('string_of_unbounded_size', (1, 'string')),
+                ('up_to_ten_characters_string', (1, 'string')),
+                ('up_to_five_unbounded_strings', (4, ((1, 'string'), None))),
+                ('unbounded_array_of_string_up_to_ten_characters_each', (4, ((1, 'string'), None))),
+                ('up_to_five_strings_up_to_ten_characters_each', (4, ((1, 'string'), None))),
+            ],
+        ),
+    }
+
+
+def test_parse_defaults_msg():
+    """Test msg parser."""
+    ret = get_types_from_msg(MSG_DEFAULTS, 'test_msgs/msg/Foo')
+    assert ret == {
+        'test_msgs/msg/Foo': (
+            [],
+            [
+                ('b', (1, 'bool')),
+                ('i', (1, 'uint8')),
+                ('o', (1, 'uint8')),
+                ('h', (1, 'uint8')),
+                ('y', (1, 'float32')),
+                ('name1', (1, 'string')),
+                ('name2', (1, 'string')),
+                ('samples', (4, ((1, 'int32'), None))),
+            ],
+        ),
+    }
 
 
 def test_parse_msg():

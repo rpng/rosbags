@@ -48,24 +48,28 @@ const_dcl
   / type_spec identifier '=' integer_literal
 
 field_dcl
-  = type_spec identifier
+  = type_spec identifier default_value?
 
 type_spec
   = array_type_spec
+  / bounded_array_type_spec
   / simple_type_spec
 
 array_type_spec
   = simple_type_spec array_size
 
+bounded_array_type_spec
+  = simple_type_spec array_bounds
+
 simple_type_spec
-  = scoped_name
+  = 'string' '<=' integer_literal
+  / scoped_name
 
 array_size
   = '[' integer_literal? ']'
 
-integer_literal
-  = r'[-+]?[1-9][0-9]+'
-  / r'[-+]?[0-9]'
+array_bounds
+  = '[<=' integer_literal ']'
 
 scoped_name
   = identifier '/' scoped_name
@@ -73,6 +77,50 @@ scoped_name
 
 identifier
   = r'[a-zA-Z_][a-zA-Z_0-9]*'
+
+default_value
+  = literal
+
+literal
+  = boolean_literal
+  / float_literal
+  / integer_literal
+  / string_literal
+  / array_literal
+
+boolean_literal
+  = 'true'
+  / 'false'
+
+integer_literal
+  = hexadecimal_literal
+  / octal_literal
+  / decimal_literal
+
+decimal_literal
+  = r'[-+]?[1-9][0-9]+'
+  / r'[-+]?[0-9]'
+
+octal_literal
+  = r'[-+]?0[0-7]+'
+
+hexadecimal_literal
+  = r'[-+]?0[xX][a-fA-F0-9]+'
+
+float_literal
+  = r'[-+]?[0-9]*\.[0-9]+([eE][-+]?[0-9]+)?'
+  / r'[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)'
+
+string_literal
+  = '"' r'(\\"|[^"])*' '"'
+  / '\'' r'(\\\'|[^'])*' '\''
+
+array_literal
+  = '[' array_elements? ']'
+
+array_elements
+  = literal ',' array_elements
+  / literal
 """
 
 
@@ -207,15 +255,20 @@ class VisitorMSG(Visitor):
             return Nodetype.ARRAY, (children[0], length[0])
         return Nodetype.SEQUENCE, (children[0], None)
 
+    def visit_bounded_array_type_spec(self, children: Any) -> Any:
+        """Process bounded array type specifier."""
+        return Nodetype.SEQUENCE, (children[0], None)
+
     def visit_simple_type_spec(self, children: Any) -> Any:
         """Process simple type specifier."""
+        typespec = children[0][1] if ('LITERAL', '<=') in children else children[1]
         dct = {
             'time': 'builtin_interfaces/msg/Time',
             'duration': 'builtin_interfaces/msg/Duration',
             'byte': 'uint8',
             'char': 'uint8',
         }
-        return Nodetype.NAME, dct.get(children[1], children[1])
+        return Nodetype.NAME, dct.get(typespec, typespec)
 
     def visit_scoped_name(self, children: Any) -> Any:
         """Process scoped name."""
@@ -228,9 +281,29 @@ class VisitorMSG(Visitor):
         """Process identifier."""
         return (Nodetype.NAME, children)
 
-    def visit_integer_literal(self, children: Any) -> Any:
-        """Process integer literal."""
+    def visit_boolean_literal(self, children: Any) -> Any:
+        """Process boolean literal."""
+        return children[1] == 'TRUE'
+
+    def visit_float_literal(self, children: Any) -> Any:
+        """Process float literal."""
+        return float(children)
+
+    def visit_decimal_literal(self, children: Any) -> Any:
+        """Process decimal integer literal."""
         return int(children)
+
+    def visit_octal_literal(self, children: Any) -> Any:
+        """Process octal integer literal."""
+        return int(children, 8)
+
+    def visit_hexadecimal_literal(self, children: Any) -> Any:
+        """Process hexadecimal integer literal."""
+        return int(children, 16)
+
+    def visit_string_literal(self, children: Any) -> Any:
+        """Process integer literal."""
+        return children[1]
 
 
 def get_types_from_msg(text: str, name: str) -> Typesdict:
