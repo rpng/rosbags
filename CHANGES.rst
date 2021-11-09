@@ -3,13 +3,22 @@
 Changes
 =======
 
+0.9.7 - 2021-11-09
+------------------
+- Fix parsing of const fields with string value
+- Parse empty msg definitions
+- Make packages PEP561 compliant
+- Parse msg bounded fields and default values
+
 0.9.6 - 2021-10-04
 ------------------
 - Do not match msg separator as constant value
 
+
 0.9.5 - 2021-10-04
 ------------------
 - Add string constant support to msg parser
+
 
 0.9.4 - 2021-09-15
 ------------------
