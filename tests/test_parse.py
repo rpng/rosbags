@@ -142,13 +142,13 @@ module test_msgs {
 """
 
 
-def test_parse_empty_msg():
+def test_parse_empty_msg() -> None:
     """Test msg parser with empty message."""
     ret = get_types_from_msg('', 'std_msgs/msg/Empty')
     assert ret == {'std_msgs/msg/Empty': ([], [])}
 
 
-def test_parse_bounds_msg():
+def test_parse_bounds_msg() -> None:
     """Test msg parser."""
     ret = get_types_from_msg(MSG_BOUNDS, 'test_msgs/msg/Foo')
     assert ret == {
@@ -168,7 +168,7 @@ def test_parse_bounds_msg():
     }
 
 
-def test_parse_defaults_msg():
+def test_parse_defaults_msg() -> None:
     """Test msg parser."""
     ret = get_types_from_msg(MSG_DEFAULTS, 'test_msgs/msg/Foo')
     assert ret == {
@@ -188,7 +188,7 @@ def test_parse_defaults_msg():
     }
 
 
-def test_parse_msg():
+def test_parse_msg() -> None:
     """Test msg parser."""
     with pytest.raises(TypesysError, match='Could not parse'):
         get_types_from_msg('invalid', 'test_msgs/msg/Foo')
@@ -208,7 +208,7 @@ def test_parse_msg():
     assert fields[6][1][0] == Nodetype.ARRAY
 
 
-def test_parse_multi_msg():
+def test_parse_multi_msg() -> None:
     """Test multi msg parser."""
     ret = get_types_from_msg(MULTI_MSG, 'test_msgs/msg/Foo')
     assert len(ret) == 3
@@ -223,7 +223,7 @@ def test_parse_multi_msg():
     assert consts == [('static', 'uint32', 42)]
 
 
-def test_parse_cstring_confusion():
+def test_parse_cstring_confusion() -> None:
     """Test if msg separator is confused with const string."""
     ret = get_types_from_msg(CSTRING_CONFUSION_MSG, 'test_msgs/msg/Foo')
     assert len(ret) == 2
@@ -235,7 +235,7 @@ def test_parse_cstring_confusion():
     assert fields[1][1][1] == 'string'
 
 
-def test_parse_relative_siblings_msg():
+def test_parse_relative_siblings_msg() -> None:
     """Test relative siblings with msg parser."""
     ret = get_types_from_msg(RELSIBLING_MSG, 'test_msgs/msg/Foo')
     assert ret['test_msgs/msg/Foo'][1][0][1][1] == 'std_msgs/msg/Header'
@@ -246,7 +246,7 @@ def test_parse_relative_siblings_msg():
     assert ret['rel_msgs/msg/Foo'][1][1][1][1] == 'rel_msgs/msg/Other'
 
 
-def test_parse_idl():
+def test_parse_idl() -> None:
     """Test idl parser."""
     ret = get_types_from_idl(IDL_LANG)
     assert ret == {}
@@ -267,21 +267,21 @@ def test_parse_idl():
     assert fields[6][1][0] == Nodetype.ARRAY
 
 
-def test_register_types():
+def test_register_types() -> None:
     """Test type registeration."""
     assert 'foo' not in FIELDDEFS
     register_types({})
-    register_types({'foo': [[], [('b', (1, 'bool'))]]})
+    register_types({'foo': [[], [('b', (1, 'bool'))]]})  # type: ignore
     assert 'foo' in FIELDDEFS
 
-    register_types({'std_msgs/msg/Header': [[], []]})
+    register_types({'std_msgs/msg/Header': [[], []]})  # type: ignore
     assert len(FIELDDEFS['std_msgs/msg/Header'][1]) == 2
 
     with pytest.raises(TypesysError, match='different definition'):
-        register_types({'foo': [[], [('x', (1, 'bool'))]]})
+        register_types({'foo': [[], [('x', (1, 'bool'))]]})  # type: ignore
 
 
-def test_generate_msgdef():
+def test_generate_msgdef() -> None:
     """Test message definition generator."""
     res = generate_msgdef('std_msgs/msg/Header')
     assert res == ('uint32 seq\ntime stamp\nstring frame_id\n', '2176decaecbce78abc3b96ef049fabed')

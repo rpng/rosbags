@@ -11,13 +11,14 @@ from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
 import zstandard
-from ruamel.yaml import YAML, YAMLError
+from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
 
 from .connection import Connection
 
 if TYPE_CHECKING:
     from types import TracebackType
-    from typing import Any, Dict, Generator, Iterable, Literal, Optional, Type, Union
+    from typing import Any, Generator, Iterable, Literal, Optional, Type, Union
 
 
 class ReaderError(Exception):
@@ -25,7 +26,7 @@ class ReaderError(Exception):
 
 
 @contextmanager
-def decompress(path: Path, do_decompress: bool):
+def decompress(path: Path, do_decompress: bool) -> Generator[Path, None, None]:
     """Transparent rosbag2 database decompression context.
 
     This context manager will yield a path to the decompressed file contents.
@@ -119,12 +120,12 @@ class Reader:
         except KeyError as exc:
             raise ReaderError(f'A metadata key is missing {exc!r}.') from None
 
-    def open(self):
+    def open(self) -> None:
         """Open rosbag2."""
         # Future storage formats will require file handles.
         self.bio = True
 
-    def close(self):
+    def close(self) -> None:
         """Close rosbag2."""
         # Future storage formats will require file handles.
         assert self.bio
@@ -133,12 +134,14 @@ class Reader:
     @property
     def duration(self) -> int:
         """Duration in nanoseconds between earliest and latest messages."""
-        return self.metadata['duration']['nanoseconds'] + 1
+        nsecs: int = self.metadata['duration']['nanoseconds']
+        return nsecs + 1
 
     @property
     def start_time(self) -> int:
         """Timestamp in nanoseconds of the earliest message."""
-        return self.metadata['starting_time']['nanoseconds_since_epoch']
+        nsecs: int = self.metadata['starting_time']['nanoseconds_since_epoch']
+        return nsecs
 
     @property
     def end_time(self) -> int:
@@ -148,7 +151,8 @@ class Reader:
     @property
     def message_count(self) -> int:
         """Total message count."""
-        return self.metadata['message_count']
+        count: int = self.metadata['message_count']
+        return count
 
     @property
     def compression_format(self) -> Optional[str]:
@@ -233,7 +237,7 @@ class Reader:
                     raise ReaderError(f'Cannot open database {path} or database missing tables.')
 
                 cur.execute('SELECT name,id FROM topics')
-                connmap: Dict[int, Connection] = {
+                connmap: dict[int, Connection] = {
                     row[1]: next((x for x in self.connections.values() if x.topic == row[0]),
                                  None)  # type: ignore
                     for row in cur

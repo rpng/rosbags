@@ -7,7 +7,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, List
+    from typing import Any, Callable, Tuple
+
+    Bitcvt = Callable[[bytes, int, bytes, int], Tuple[int, int]]
+    BitcvtSize = Callable[[bytes, int, None, int], Tuple[int, int]]
+
+    CDRDeser = Callable[[bytes, int, type], Tuple[Any, int]]
+    CDRSer = Callable[[bytes, int, type], int]
+    CDRSerSize = Callable[[int, type], int]
 
 
 class Descriptor(NamedTuple):
@@ -28,15 +35,15 @@ class Msgdef(NamedTuple):
     """Metadata of a message."""
 
     name: str
-    fields: List[Field]
+    fields: list[Field]
     cls: Any
     size_cdr: int
-    getsize_cdr: Callable
-    serialize_cdr_le: Callable
-    serialize_cdr_be: Callable
-    deserialize_cdr_le: Callable
-    deserialize_cdr_be: Callable
-    getsize_ros1_to_cdr: Callable
-    ros1_to_cdr: Callable
-    getsize_cdr_to_ros1: Callable
-    cdr_to_ros1: Callable
+    getsize_cdr: CDRSerSize
+    serialize_cdr_le: CDRSer
+    serialize_cdr_be: CDRSer
+    deserialize_cdr_le: CDRDeser
+    deserialize_cdr_be: CDRDeser
+    getsize_ros1_to_cdr: BitcvtSize
+    ros1_to_cdr: Bitcvt
+    getsize_cdr_to_ros1: BitcvtSize
+    cdr_to_ros1: Bitcvt

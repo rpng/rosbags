@@ -11,9 +11,9 @@ from dataclasses import dataclass
 from enum import IntEnum, auto
 from io import BytesIO
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
 
-from lz4.frame import compress as lz4_compress  # type: ignore
+from lz4.frame import compress as lz4_compress
 
 from rosbags.typesys.msg import denormalize_msgtype, generate_msgdef
 
@@ -21,7 +21,7 @@ from .reader import Connection, RecordType
 
 if TYPE_CHECKING:
     from types import TracebackType
-    from typing import Any, BinaryIO, Callable, Literal, Optional, Type, Union
+    from typing import BinaryIO, Callable, Literal, Optional, Type, Union
 
 
 class WriterError(Exception):
@@ -57,10 +57,10 @@ def serialize_time(val: int) -> bytes:
     return struct.pack('<LL', sec, nsec)
 
 
-class Header(dict):
+class Header(Dict[str, Any]):
     """Record header."""
 
-    def set_uint32(self, name: str, value: int):
+    def set_uint32(self, name: str, value: int) -> None:
         """Set field to uint32 value.
 
         Args:
@@ -70,7 +70,7 @@ class Header(dict):
         """
         self[name] = serialize_uint32(value)
 
-    def set_uint64(self, name: str, value: int):
+    def set_uint64(self, name: str, value: int) -> None:
         """Set field to uint64 value.
 
         Args:
@@ -80,7 +80,7 @@ class Header(dict):
         """
         self[name] = serialize_uint64(value)
 
-    def set_string(self, name: str, value: str):
+    def set_string(self, name: str, value: str) -> None:
         """Set field to string value.
 
         Args:
@@ -90,7 +90,7 @@ class Header(dict):
         """
         self[name] = value.encode()
 
-    def set_time(self, name: str, value: int):
+    def set_time(self, name: str, value: int) -> None:
         """Set field to time value.
 
         Args:
@@ -163,7 +163,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         ]
         self.chunk_threshold = 1 * (1 << 20)
 
-    def set_compression(self, fmt: CompressionFormat):
+    def set_compression(self, fmt: CompressionFormat) -> None:
         """Enable compression on rosbag1.
 
         This function has to be called before opening.
@@ -180,20 +180,21 @@ class Writer:  # pylint: disable=too-many-instance-attributes
 
         self.compression_format = fmt.name.lower()
 
-        bz2: Callable[[bytes], bytes] = lambda x: bz2_compress(x, compresslevel=9)
-        lz4: Callable[[bytes], bytes] = lambda x: lz4_compress(x, compression_level=16)
+        bz2: Callable[[bytes], bytes] = lambda x: bz2_compress(x, 9)
+        lz4: Callable[[bytes], bytes] = lambda x: lz4_compress(x, 16)  # type: ignore
         self.compressor = {
             'bz2': bz2,
             'lz4': lz4,
         }[self.compression_format]
 
-    def open(self):
+    def open(self) -> None:
         """Open rosbag1 for writing."""
         try:
             self.bio = self.path.open('xb')
         except FileExistsError:
             raise WriterError(f'{self.path} exists already, not overwriting.') from None
 
+        assert self.bio
         self.bio.write(b'#ROSBAG V2.0\n')
         header = Header()
         header.set_uint64('index_pos', 0)
@@ -263,7 +264,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         self.connections[connection.cid] = connection
         return connection
 
-    def write(self, connection: Connection, timestamp: int, data: bytes):
+    def write(self, connection: Connection, timestamp: int, data: bytes) -> None:
         """Write message to rosbag1.
 
         Args:
@@ -301,7 +302,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
             self.write_chunk(chunk)
 
     @staticmethod
-    def write_connection(connection: Connection, bio: BytesIO):
+    def write_connection(connection: Connection, bio: BinaryIO) -> None:
         """Write connection record."""
         header = Header()
         header.set_uint32('conn', connection.cid)
@@ -319,7 +320,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
             header.set_string('latching', str(connection.latching))
         header.write(bio)
 
-    def write_chunk(self, chunk: WriteChunk):
+    def write_chunk(self, chunk: WriteChunk) -> None:
         """Write open chunk to file."""
         assert self.bio
 
@@ -347,12 +348,13 @@ class Writer:  # pylint: disable=too-many-instance-attributes
             chunk.data.close()
             self.chunks.append(WriteChunk(BytesIO(), -1, 2**64, 0, defaultdict(list)))
 
-    def close(self):
+    def close(self) -> None:
         """Close rosbag1 after writing.
 
         Closes open chunks and writes index.
 
         """
+        assert self.bio
         for chunk in self.chunks:
             if chunk.pos == -1:
                 self.write_chunk(chunk)

@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from typing import Optional
 
 
-def test_no_overwrite(tmp_path: Path):
+def test_no_overwrite(tmp_path: Path) -> None:
     """Test writer does not touch existing files."""
     path = tmp_path / 'test.bag'
     path.write_text('foo')
@@ -30,7 +30,7 @@ def test_no_overwrite(tmp_path: Path):
         writer.open()
 
 
-def test_empty(tmp_path: Path):
+def test_empty(tmp_path: Path) -> None:
     """Test empty bag."""
     path = tmp_path / 'test.bag'
 
@@ -40,7 +40,7 @@ def test_empty(tmp_path: Path):
     assert len(data) == 13 + 4096
 
 
-def test_add_connection(tmp_path: Path):
+def test_add_connection(tmp_path: Path) -> None:
     """Test adding of connections."""
     path = tmp_path / 'test.bag'
 
@@ -88,7 +88,7 @@ def test_add_connection(tmp_path: Path):
     assert (res1.cid, res2.cid, res3.cid) == (0, 1, 2)
 
 
-def test_write_errors(tmp_path: Path):
+def test_write_errors(tmp_path: Path) -> None:
     """Test write errors."""
     path = tmp_path / 'test.bag'
 
@@ -101,7 +101,7 @@ def test_write_errors(tmp_path: Path):
     path.unlink()
 
 
-def test_write_simple(tmp_path: Path):
+def test_write_simple(tmp_path: Path) -> None:
     """Test writing of messages."""
     path = tmp_path / 'test.bag'
 
@@ -179,7 +179,7 @@ def test_write_simple(tmp_path: Path):
     path.unlink()
 
 
-def test_compression_errors(tmp_path: Path):
+def test_compression_errors(tmp_path: Path) -> None:
     """Test compression modes."""
     path = tmp_path / 'test.bag'
     with Writer(path) as writer, \
@@ -188,7 +188,7 @@ def test_compression_errors(tmp_path: Path):
 
 
 @pytest.mark.parametrize('fmt', [None, Writer.CompressionFormat.BZ2, Writer.CompressionFormat.LZ4])
-def test_compression_modes(tmp_path: Path, fmt: Optional[Writer.CompressionFormat]):
+def test_compression_modes(tmp_path: Path, fmt: Optional[Writer.CompressionFormat]) -> None:
     """Test compression modes."""
     path = tmp_path / 'test.bag'
     writer = Writer(path)

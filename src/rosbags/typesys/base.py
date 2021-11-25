@@ -67,6 +67,6 @@ def parse_message_definition(visitor: Visitor, text: str) -> Typesdict:
         pos = rule.skip_ws(text, 0)
         npos, trees = rule.parse(text, pos)
         assert npos == len(text), f'Could not parse: {text!r}'
-        return visitor.visit(trees)
+        return visitor.visit(trees)  # type: ignore
     except Exception as err:  # pylint: disable=broad-except
         raise TypesysError(f'Could not parse: {text!r}') from err

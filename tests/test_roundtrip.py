@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 @pytest.mark.parametrize('mode', [*Writer.CompressionMode])
-def test_roundtrip(mode: Writer.CompressionMode, tmp_path: Path):
+def test_roundtrip(mode: Writer.CompressionMode, tmp_path: Path) -> None:
     """Test full data roundtrip."""
 
     class Foo:  # pylint: disable=too-few-public-methods

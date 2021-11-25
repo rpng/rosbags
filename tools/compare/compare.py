@@ -25,7 +25,7 @@ rosgraph_msgs.msg.TopicStatistics = Mock()
 import rosbag.bag  # type:ignore  # noqa: E402  pylint: disable=wrong-import-position
 
 if TYPE_CHECKING:
-    from typing import Any, List, Union
+    from typing import Any, Generator, List, Union
 
     from rosbag.bag import _Connection_Info
 
@@ -39,7 +39,7 @@ class Reader:  # pylint: disable=too-few-public-methods
         self.reader.open(StorageOptions(path, 'sqlite3'), ConverterOptions('', ''))
         self.typemap = {x.name: x.type for x in self.reader.get_all_topics_and_types()}
 
-    def messages(self):
+    def messages(self) -> Generator[tuple[str, int, bytes], None, None]:
         """Expose rosbag2 like generator behavior."""
         while self.reader.has_next():
             topic, data, timestamp = self.reader.read_next()
@@ -47,7 +47,7 @@ class Reader:  # pylint: disable=too-few-public-methods
             yield topic, timestamp, deserialize_message(data, pytype)
 
 
-def fixup_ros1(conns: List[_Connection_Info]):
+def fixup_ros1(conns: List[_Connection_Info]) -> None:
     """Monkeypatch ROS2 fieldnames onto ROS1 objects.
 
     Args:
@@ -69,15 +69,12 @@ def fixup_ros1(conns: List[_Connection_Info]):
         cls.p = property(lambda x: x.P, lambda x, y: setattr(x, 'P', y))  # noqa: B010
 
 
-def compare(ref: Any, msg: Any):
+def compare(ref: Any, msg: Any) -> None:
     """Compare message to its reference.
 
     Args:
         ref: Reference ROS1 message.
         msg: Converted ROS2 message.
-
-    Return:
-        True if messages are identical.
 
     """
     if hasattr(msg, 'get_fields_and_field_types'):
@@ -107,7 +104,7 @@ def compare(ref: Any, msg: Any):
         assert ref == msg
 
 
-def main_bag1_bag1(path1: Path, path2: Path):
+def main_bag1_bag1(path1: Path, path2: Path) -> None:
     """Compare rosbag1 to rosbag1 message by message.
 
     Args:
@@ -132,7 +129,7 @@ def main_bag1_bag1(path1: Path, path2: Path):
     print('Bags are identical.')  # noqa: T001
 
 
-def main_bag1_bag2(path1: Path, path2: Path):
+def main_bag1_bag2(path1: Path, path2: Path) -> None:
     """Compare rosbag1 to rosbag2 message by message.
 
     Args:

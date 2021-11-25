@@ -50,7 +50,7 @@ class Rule:
             }
         return data
 
-    def parse(self, text: str, pos: int):
+    def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
         raise NotImplementedError  # pragma: no cover
 
@@ -192,7 +192,7 @@ class Visitor:  # pylint: disable=too-few-public-methods
 
     RULES: dict[str, Rule] = {}
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize."""
 
     def visit(self, tree: Any) -> Any:

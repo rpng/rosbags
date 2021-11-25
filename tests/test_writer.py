@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def test_writer(tmp_path: Path):
+def test_writer(tmp_path: Path) -> None:
     """Test Writer."""
     path = (tmp_path / 'rosbag2')
     with Writer(path) as bag:
@@ -60,7 +60,7 @@ def test_writer(tmp_path: Path):
     assert size > (path / 'compress_message.db3').stat().st_size
 
 
-def test_failure_cases(tmp_path: Path):
+def test_failure_cases(tmp_path: Path) -> None:
     """Test writer failure cases."""
     with pytest.raises(WriterError, match='exists'):
         Writer(tmp_path)

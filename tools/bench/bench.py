@@ -21,7 +21,7 @@ from rosbags.rosbag2 import Reader
 from rosbags.serde import deserialize_cdr
 
 if TYPE_CHECKING:
-    from typing import Any
+    from typing import Any, Generator
 
 
 class ReaderPy:  # pylint: disable=too-few-public-methods
@@ -35,7 +35,7 @@ class ReaderPy:  # pylint: disable=too-few-public-methods
         self.reader.open(soptions, coptions)
         self.typemap = {x.name: x.type for x in self.reader.get_all_topics_and_types()}
 
-    def messages(self):
+    def messages(self) -> Generator[tuple[str, str, int, bytes], None, None]:
         """Expose rosbag2 like generator behavior."""
         while self.reader.has_next():
             topic, data, timestamp = self.reader.read_next()
@@ -48,7 +48,7 @@ def deserialize_py(data: bytes, msgtype: str) -> Any:
     return deserialize_message(data, pytype)
 
 
-def compare_msg(lite: Any, native: Any):
+def compare_msg(lite: Any, native: Any) -> None:
     """Compare rosbag2 (lite) vs rosbag2_py (native) message content.
 
     Args:
@@ -79,7 +79,7 @@ def compare_msg(lite: Any, native: Any):
             assert native_val == lite_val, f'{fieldname}: {native_val} != {lite_val}'
 
 
-def compare(path: Path):
+def compare(path: Path) -> None:
     """Compare raw and deserialized messages."""
     with Reader(path) as reader:
         gens = (reader.messages(), ReaderPy(path).messages())
@@ -100,7 +100,7 @@ def compare(path: Path):
         assert len(list(gens[1])) == 0
 
 
-def read_deser_rosbag2_py(path: Path):
+def read_deser_rosbag2_py(path: Path) -> None:
     """Read testbag with rosbag2_py."""
     soptions = StorageOptions(str(path), 'sqlite3')
     coptions = ConverterOptions('', '')
@@ -115,14 +115,14 @@ def read_deser_rosbag2_py(path: Path):
         deserialize_message(rawdata, pytype)
 
 
-def read_deser_rosbag2(path: Path):
+def read_deser_rosbag2(path: Path) -> None:
     """Read testbag with rosbag2lite."""
     with Reader(path) as reader:
         for connection, _, data in reader.messages():
             deserialize_cdr(data, connection.msgtype)
 
 
-def main():
+def main() -> None:
     """Benchmark rosbag2 against rosbag2_py."""
     path = Path(sys.argv[1])
     try:

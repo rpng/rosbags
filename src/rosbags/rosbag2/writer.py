@@ -80,10 +80,10 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         self.compression_format = ''
         self.compressor: Optional[zstandard.ZstdCompressor] = None
         self.connections: dict[int, Connection] = {}
-        self.conn = None
+        self.conn: Optional[sqlite3.Connection] = None
         self.cursor: Optional[sqlite3.Cursor] = None
 
-    def set_compression(self, mode: CompressionMode, fmt: CompressionFormat):
+    def set_compression(self, mode: CompressionMode, fmt: CompressionFormat) -> None:
         """Enable compression on bag.
 
         This function has to be called before opening.
@@ -104,7 +104,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         self.compression_format = fmt.name.lower()
         self.compressor = zstandard.ZstdCompressor()
 
-    def open(self):
+    def open(self) -> None:
         """Open rosbag2 for writing.
 
         Create base directory and open database connection.
@@ -164,7 +164,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         self.cursor.execute('INSERT INTO topics VALUES(?, ?, ?, ?, ?)', meta)
         return connection
 
-    def write(self, connection: Connection, timestamp: int, data: bytes):
+    def write(self, connection: Connection, timestamp: int, data: bytes) -> None:
         """Write message to rosbag2.
 
         Args:
@@ -191,12 +191,14 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         )
         connection.count += 1
 
-    def close(self):
+    def close(self) -> None:
         """Close rosbag2 after writing.
 
         Closes open database transactions and writes metadata.yaml.
 
         """
+        assert self.cursor
+        assert self.conn
         self.cursor.close()
         self.cursor = None
 
@@ -209,6 +211,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         self.conn.close()
 
         if self.compression_mode == 'file':
+            assert self.compressor
             src = self.dbpath
             self.dbpath = src.with_suffix(f'.db3.{self.compression_format}')
             with src.open('rb') as infile, self.dbpath.open('wb') as outfile:

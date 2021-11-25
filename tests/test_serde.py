@@ -18,7 +18,7 @@ from rosbags.typesys.types import builtin_interfaces__msg__Time, std_msgs__msg__
 from .cdr import deserialize, serialize
 
 if TYPE_CHECKING:
-    from typing import Any, Tuple, Union
+    from typing import Any, Generator, Union
 
 MSG_POLY = (
     (
@@ -169,7 +169,7 @@ test_msgs/msg/dynamic_s_64[] seq_msg_ds6
 
 
 @pytest.fixture()
-def _comparable():
+def _comparable() -> Generator[None, None, None]:
     """Make messages containing numpy arrays comparable.
 
     Notes:
@@ -180,7 +180,7 @@ def _comparable():
     def arreq(self: MagicMock, other: Union[MagicMock, Any]) -> bool:
         lhs = self._mock_wraps  # pylint: disable=protected-access
         rhs = getattr(other, '_mock_wraps', other)
-        return (lhs == rhs).all()
+        return (lhs == rhs).all()  # type: ignore
 
     class CNDArray(MagicMock):
         """Mock ndarray."""
@@ -194,14 +194,14 @@ def _comparable():
             return CNDArray(wraps=self._mock_wraps.byteswap(*args))
 
     def wrap_frombuffer(*args: Any, **kwargs: Any) -> CNDArray:
-        return CNDArray(wraps=frombuffer(*args, **kwargs))
+        return CNDArray(wraps=frombuffer(*args, **kwargs))  # type: ignore
 
     with patch.object(numpy, 'frombuffer', side_effect=wrap_frombuffer):
         yield
 
 
 @pytest.mark.parametrize('message', MESSAGES)
-def test_serde(message: Tuple[bytes, str, bool]):
+def test_serde(message: tuple[bytes, str, bool]) -> None:
     """Test serialization deserialization roundtrip."""
     rawdata, typ, is_little = message
 
@@ -213,7 +213,7 @@ def test_serde(message: Tuple[bytes, str, bool]):
 
 
 @pytest.mark.usefixtures('_comparable')
-def test_deserializer():
+def test_deserializer() -> None:
     """Test deserializer."""
     msg = deserialize_cdr(*MSG_POLY[:2])
     assert msg == deserialize(*MSG_POLY[:2])
@@ -233,7 +233,8 @@ def test_deserializer():
     assert msg.header.frame_id == 'foo42'
     field = msg.magnetic_field
     assert (field.x, field.y, field.z) == (128., 128., 128.)
-    assert (numpy.diag(msg.magnetic_field_covariance.reshape(3, 3)) == [1., 1., 1.]).all()
+    diag = numpy.diag(msg.magnetic_field_covariance.reshape(3, 3))  # type: ignore
+    assert (diag == [1., 1., 1.]).all()
 
     msg_big = deserialize_cdr(*MSG_MAGN_BIG[:2])
     assert msg_big == deserialize(*MSG_MAGN_BIG[:2])
@@ -241,7 +242,7 @@ def test_deserializer():
 
 
 @pytest.mark.usefixtures('_comparable')
-def test_serializer():
+def test_serializer() -> None:
     """Test serializer."""
 
     class Foo:  # pylint: disable=too-few-public-methods
@@ -268,7 +269,7 @@ def test_serializer():
 
 
 @pytest.mark.usefixtures('_comparable')
-def test_serializer_errors():
+def test_serializer_errors() -> None:
     """Test seralizer with broken messages."""
 
     class Foo:  # pylint: disable=too-few-public-methods
@@ -286,7 +287,7 @@ def test_serializer_errors():
 
 
 @pytest.mark.usefixtures('_comparable')
-def test_custom_type():
+def test_custom_type() -> None:
     """Test custom type."""
     cname = 'test_msgs/msg/custom'
     register_types(dict(get_types_from_msg(STATIC_64_64, 'test_msgs/msg/static_64_64')))
@@ -362,7 +363,7 @@ def test_custom_type():
     assert res == msg
 
 
-def test_ros1_to_cdr():
+def test_ros1_to_cdr() -> None:
     """Test ROS1 to CDR conversion."""
     register_types(dict(get_types_from_msg(STATIC_16_64, 'test_msgs/msg/static_16_64')))
     msg_ros = (b'\x01\x00' b'\x00\x00\x00\x00\x00\x00\x00\x02')
@@ -385,7 +386,7 @@ def test_ros1_to_cdr():
     assert ros1_to_cdr(msg_ros, 'test_msgs/msg/dynamic_s_64') == msg_cdr
 
 
-def test_cdr_to_ros1():
+def test_cdr_to_ros1() -> None:
     """Test CDR to ROS1 conversion."""
     register_types(dict(get_types_from_msg(STATIC_16_64, 'test_msgs/msg/static_16_64')))
     msg_ros = (b'\x01\x00' b'\x00\x00\x00\x00\x00\x00\x00\x02')

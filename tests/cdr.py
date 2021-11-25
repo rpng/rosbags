@@ -9,6 +9,7 @@ from struct import Struct, pack_into, unpack_from
 from typing import TYPE_CHECKING, Dict, List, Union, cast
 
 import numpy
+from numpy.typing import NDArray
 
 from rosbags.serde.messages import SerdeError, get_msgdef
 from rosbags.serde.typing import Msgdef
@@ -116,7 +117,7 @@ def deserialize_array(rawdata: bytes, bmap: BasetypeMap, pos: int, num: int, des
 
         size = SIZEMAP[desc.args]
         pos = (pos + size - 1) & -size
-        ndarr = numpy.frombuffer(rawdata, dtype=desc.args, count=num, offset=pos)
+        ndarr = numpy.frombuffer(rawdata, dtype=desc.args, count=num, offset=pos)  # type: ignore
         if (bmap is BASETYPEMAP_LE) != (sys.byteorder == 'little'):
             ndarr = ndarr.byteswap()  # no inplace on readonly array
         return ndarr, pos + num * SIZEMAP[desc.args]
@@ -278,7 +279,7 @@ def serialize_array(
         size = SIZEMAP[desc.args]
         pos = (pos + size - 1) & -size
         size *= len(val)
-        val = cast(numpy.ndarray, val)
+        val = cast(NDArray[numpy.int_], val)
         if (bmap is BASETYPEMAP_LE) != (sys.byteorder == 'little'):
             val = val.byteswap()  # no inplace on readonly array
         rawdata[pos:pos + size] = memoryview(val.tobytes())

@@ -10,14 +10,15 @@ import os
 import re
 import struct
 from bz2 import decompress as bz2_decompress
+from collections import defaultdict
 from enum import Enum, IntEnum
 from functools import reduce
 from io import BytesIO
 from itertools import groupby
 from pathlib import Path
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Any, Dict, NamedTuple
 
-from lz4.frame import decompress as lz4_decompress  # type: ignore
+from lz4.frame import decompress as lz4_decompress
 
 from rosbags.typesys.msg import normalize_msgtype
 
@@ -59,7 +60,7 @@ class Connection(NamedTuple):
     md5sum: str
     callerid: Optional[str]
     latching: Optional[int]
-    indexes: list
+    indexes: list[IndexData]
 
 
 class ChunkInfo(NamedTuple):
@@ -76,7 +77,7 @@ class Chunk(NamedTuple):
 
     datasize: int
     datapos: int
-    decompressor: Callable
+    decompressor: Callable[[bytes], bytes]
 
 
 class TopicInfo(NamedTuple):
@@ -124,9 +125,9 @@ class IndexData(NamedTuple):
         return self.time != other[0]
 
 
-deserialize_uint8 = struct.Struct('<B').unpack
-deserialize_uint32 = struct.Struct('<L').unpack
-deserialize_uint64 = struct.Struct('<Q').unpack
+deserialize_uint8: Callable[[bytes], tuple[int]] = struct.Struct('<B').unpack  # type: ignore
+deserialize_uint32: Callable[[bytes], tuple[int]] = struct.Struct('<L').unpack  # type: ignore
+deserialize_uint64: Callable[[bytes], tuple[int]] = struct.Struct('<Q').unpack  # type: ignore
 
 
 def deserialize_time(val: bytes) -> int:
@@ -139,11 +140,12 @@ def deserialize_time(val: bytes) -> int:
         Deserialized value.
 
     """
-    sec, nsec = struct.unpack('<LL', val)
+    unpacked: tuple[int, int] = struct.unpack('<LL', val)  # type: ignore
+    sec, nsec = unpacked
     return sec * 10**9 + nsec
 
 
-class Header(dict):
+class Header(Dict[str, Any]):
     """Record header."""
 
     def get_uint8(self, name: str) -> int:
@@ -214,7 +216,9 @@ class Header(dict):
 
         """
         try:
-            return self[name].decode()
+            value = self[name]
+            assert isinstance(value, bytes)
+            return value.decode()
         except (KeyError, ValueError) as err:
             raise ReaderError(f'Could not read string field {name!r}.') from err
 
@@ -237,7 +241,7 @@ class Header(dict):
             raise ReaderError(f'Could not read time field {name!r}.') from err
 
     @classmethod
-    def read(cls: type, src: BinaryIO, expect: Optional[RecordType] = None) -> Header:
+    def read(cls: Type[Header], src: BinaryIO, expect: Optional[RecordType] = None) -> Header:
         """Read header from file handle.
 
         Args:
@@ -362,10 +366,10 @@ class Reader:
         self.connections: dict[int, Connection] = {}
         self.chunk_infos: list[ChunkInfo] = []
         self.chunks: dict[int, Chunk] = {}
-        self.current_chunk = (-1, BytesIO())
+        self.current_chunk: tuple[int, BinaryIO] = (-1, BytesIO())
         self.topics: dict[str, TopicInfo] = {}
 
-    def open(self):  # pylint: disable=too-many-branches,too-many-locals,too-many-statements
+    def open(self) -> None:  # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         """Open rosbag and read metadata."""
         try:
             self.bio = self.path.open('rb')
@@ -409,24 +413,25 @@ class Reader:
                 raise ReaderError(f'Bag index looks damaged: {err.args}') from None
 
             self.chunks = {}
+            indexes: dict[int, list[list[IndexData]]] = defaultdict(list)
             for chunk_info in self.chunk_infos:
                 self.bio.seek(chunk_info.pos)
                 self.chunks[chunk_info.pos] = self.read_chunk()
 
                 for _ in range(len(chunk_info.connection_counts)):
                     cid, index = self.read_index_data(chunk_info.pos)
-                    self.connections[cid].indexes.append(index)
+                    indexes[cid].append(index)
 
-            for connection in self.connections.values():
-                connection.indexes[:] = list(heapq.merge(*connection.indexes, key=lambda x: x.time))
+            for cid, connection in self.connections.items():
+                connection.indexes.extend(heapq.merge(*indexes[cid], key=lambda x: x.time))
                 assert connection.indexes
 
             self.topics = {}
-            for topic, connections in groupby(
+            for topic, group in groupby(
                 sorted(self.connections.values(), key=lambda x: x.topic),
                 key=lambda x: x.topic,
             ):
-                connections = list(connections)
+                connections = list(group)
                 count = reduce(
                     lambda x, y: x + y,
                     (
@@ -446,7 +451,7 @@ class Reader:
             self.close()
             raise
 
-    def close(self):
+    def close(self) -> None:
         """Close rosbag."""
         assert self.bio
         self.bio.close()
@@ -614,8 +619,8 @@ class Reader:
 
                 chunk_header = self.chunks[entry.chunk_pos]
                 self.bio.seek(chunk_header.datapos)
-                chunk = chunk_header.decompressor(read_bytes(self.bio, chunk_header.datasize))
-                self.current_chunk = (entry.chunk_pos, BytesIO(chunk))
+                rawbytes = chunk_header.decompressor(read_bytes(self.bio, chunk_header.datasize))
+                self.current_chunk = (entry.chunk_pos, BytesIO(rawbytes))
 
             chunk = self.current_chunk[1]
             chunk.seek(entry.offset)

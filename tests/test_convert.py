@@ -15,7 +15,7 @@ from rosbags.rosbag1 import ReaderError
 from rosbags.rosbag2 import WriterError
 
 
-def test_cliwrapper(tmp_path: Path):
+def test_cliwrapper(tmp_path: Path) -> None:
     """Test cli wrapper."""
     (tmp_path / 'subdir').mkdir()
     (tmp_path / 'ros1.bag').write_text('')
@@ -62,7 +62,7 @@ def test_cliwrapper(tmp_path: Path):
     mock_print.assert_called_with('ERROR: exc')
 
 
-def test_convert(tmp_path: Path):
+def test_convert(tmp_path: Path) -> None:
     """Test conversion function."""
     (tmp_path / 'subdir').mkdir()
     (tmp_path / 'foo.bag').write_text('')

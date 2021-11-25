@@ -117,7 +117,7 @@ def bag(request: SubRequest, tmp_path: Path) -> Path:
     return tmp_path
 
 
-def test_reader(bag: Path):
+def test_reader(bag: Path) -> None:
     """Test reader and deserializer on simple bag."""
     with Reader(bag) as reader:
         assert reader.duration == 43
@@ -151,7 +151,7 @@ def test_reader(bag: Path):
             next(gen)
 
 
-def test_message_filters(bag: Path):
+def test_message_filters(bag: Path) -> None:
     """Test reader filters messages."""
     with Reader(bag) as reader:
         magn_connections = [x for x in reader.connections.values() if x.topic == '/magn']
@@ -188,14 +188,14 @@ def test_message_filters(bag: Path):
             next(gen)
 
 
-def test_user_errors(bag: Path):
+def test_user_errors(bag: Path) -> None:
     """Test user errors."""
     reader = Reader(bag)
     with pytest.raises(ReaderError, match='Rosbag is not open'):
         next(reader.messages())
 
 
-def test_failure_cases(tmp_path: Path):
+def test_failure_cases(tmp_path: Path) -> None:
     """Test bags with broken fs layout."""
     with pytest.raises(ReaderError, match='not read metadata'):
         Reader(tmp_path)

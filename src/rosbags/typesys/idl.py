@@ -253,10 +253,10 @@ class VisitorIDL(Visitor):  # pylint: disable=too-many-public-methods
 
     RULES = parse_grammar(GRAMMAR_IDL)
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize."""
         super().__init__()
-        self.typedefs = {}
+        self.typedefs: dict[str, tuple[Nodetype, tuple[Any, Any]]] = {}
 
     def visit_specification(self, children: Any) -> Typesdict:
         """Process start symbol, return only children of modules."""

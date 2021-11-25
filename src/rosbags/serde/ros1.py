@@ -18,10 +18,16 @@ from .typing import Field
 from .utils import SIZEMAP, Valtype, align, align_after, compile_lines
 
 if TYPE_CHECKING:
-    from typing import Callable  # pylint: disable=ungrouped-imports
+    from typing import Union  # pylint: disable=ungrouped-imports
+
+    from .typing import Bitcvt, BitcvtSize
 
 
-def generate_ros1_to_cdr(fields: list[Field], typename: str, copy: bool) -> Callable:
+def generate_ros1_to_cdr(
+    fields: list[Field],
+    typename: str,
+    copy: bool,
+) -> Union[Bitcvt, BitcvtSize]:
     """Generate ROS1 to CDR conversion function.
 
     Args:
@@ -169,10 +175,14 @@ def generate_ros1_to_cdr(fields: list[Field], typename: str, copy: bool) -> Call
             aligned = anext
 
     lines.append('  return ipos, opos')
-    return getattr(compile_lines(lines), funcname)
+    return getattr(compile_lines(lines), funcname)  # type: ignore
 
 
-def generate_cdr_to_ros1(fields: list[Field], typename: str, copy: bool) -> Callable:
+def generate_cdr_to_ros1(
+    fields: list[Field],
+    typename: str,
+    copy: bool,
+) -> Union[Bitcvt, BitcvtSize]:
     """Generate CDR to ROS1 conversion function.
 
     Args:
@@ -318,4 +328,4 @@ def generate_cdr_to_ros1(fields: list[Field], typename: str, copy: bool) -> Call
             aligned = anext
 
     lines.append('  return ipos, opos')
-    return getattr(compile_lines(lines), funcname)
+    return getattr(compile_lines(lines), funcname)  # type: ignore

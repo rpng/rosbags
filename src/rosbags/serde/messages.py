@@ -65,9 +65,9 @@ def get_msgdef(typename: str) -> Msgdef:
             generate_serialize_cdr(fields, 'be'),
             generate_deserialize_cdr(fields, 'le'),
             generate_deserialize_cdr(fields, 'be'),
-            generate_ros1_to_cdr(fields, typename, False),
-            generate_ros1_to_cdr(fields, typename, True),
-            generate_cdr_to_ros1(fields, typename, False),
-            generate_cdr_to_ros1(fields, typename, True),
+            generate_ros1_to_cdr(fields, typename, False),  # type: ignore
+            generate_ros1_to_cdr(fields, typename, True),  # type: ignore
+            generate_cdr_to_ros1(fields, typename, False),  # type: ignore
+            generate_cdr_to_ros1(fields, typename, True),  # type: ignore
         )
     return MSGDEFCACHE[typename]

@@ -19,10 +19,10 @@ from .typing import Field
 from .utils import SIZEMAP, Valtype, align, align_after, compile_lines
 
 if TYPE_CHECKING:
-    from typing import Callable
+    from .typing import CDRDeser, CDRSer, CDRSerSize
 
 
-def generate_getsize_cdr(fields: list[Field]) -> tuple[Callable, int]:
+def generate_getsize_cdr(fields: list[Field]) -> tuple[CDRSerSize, int]:
     """Generate cdr size calculation function.
 
     Args:
@@ -157,7 +157,7 @@ def generate_getsize_cdr(fields: list[Field]) -> tuple[Callable, int]:
     return compile_lines(lines).getsize_cdr, is_stat * size  # type: ignore
 
 
-def generate_serialize_cdr(fields: list[Field], endianess: str) -> Callable:
+def generate_serialize_cdr(fields: list[Field], endianess: str) -> CDRSer:
     """Generate cdr serialization function.
 
     Args:
@@ -296,7 +296,7 @@ def generate_serialize_cdr(fields: list[Field], endianess: str) -> Callable:
     return compile_lines(lines).serialize_cdr  # type: ignore
 
 
-def generate_deserialize_cdr(fields: list[Field], endianess: str) -> Callable:
+def generate_deserialize_cdr(fields: list[Field], endianess: str) -> CDRDeser:
     """Generate cdr deserialization function.
 
     Args:

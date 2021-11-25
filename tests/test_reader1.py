@@ -2,8 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """Reader tests."""
 
+from __future__ import annotations
+
 from collections import defaultdict
 from struct import pack
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
@@ -11,8 +14,12 @@ import pytest
 from rosbags.rosbag1 import Reader, ReaderError
 from rosbags.rosbag1.reader import IndexData
 
+if TYPE_CHECKING:
+    from pathlib import Path
+    from typing import Any, Sequence, Union
 
-def ser(data):
+
+def ser(data: Union[dict[str, Any], bytes]) -> bytes:
     """Serialize record header."""
     if isinstance(data, dict):
         fields = []
@@ -23,7 +30,7 @@ def ser(data):
     return pack('<L', len(data)) + data
 
 
-def create_default_header():
+def create_default_header() -> dict[str, bytes]:
     """Create empty rosbag header."""
     return {
         'op': b'\x03',
@@ -32,7 +39,11 @@ def create_default_header():
     }
 
 
-def create_connection(cid=1, topic=0, typ=0):
+def create_connection(
+    cid: int = 1,
+    topic: int = 0,
+    typ: int = 0,
+) -> tuple[dict[str, bytes], dict[str, bytes]]:
     """Create connection record."""
     return {
         'op': b'\x07',
@@ -45,7 +56,11 @@ def create_connection(cid=1, topic=0, typ=0):
     }
 
 
-def create_message(cid=1, time=0, msg=0):
+def create_message(
+    cid: int = 1,
+    time: int = 0,
+    msg: int = 0,
+) -> tuple[dict[str, Union[bytes, int]], bytes]:
     """Create message record."""
     return {
         'op': b'\x02',
@@ -54,7 +69,12 @@ def create_message(cid=1, time=0, msg=0):
     }, f'MSGCONTENT{msg}'.encode()
 
 
-def write_bag(bag, header, chunks=None):  # pylint: disable=too-many-locals,too-many-statements
+def write_bag(  # pylint: disable=too-many-locals,too-many-statements
+
+    bag: Path,
+    header: dict[str, bytes],
+    chunks: Sequence[Any] = (),
+) -> None:
     """Write bag file."""
     magic = b'#ROSBAG V2.0\n'
 
@@ -70,7 +90,7 @@ def write_bag(bag, header, chunks=None):  # pylint: disable=too-many-locals,too-
             chunk_bytes = b''
             start_time = 2**32 - 1
             end_time = 0
-            counts = defaultdict(int)
+            counts: dict[int, int] = defaultdict(int)
             index = {}
             offset = 0
 
@@ -95,8 +115,8 @@ def write_bag(bag, header, chunks=None):  # pylint: disable=too-many-locals,too-
                             'count': 0,
                             'msgs': b'',
                         }
-                    index[conn]['count'] += 1
-                    index[conn]['msgs'] += pack('<LLL', time, 0, offset)
+                    index[conn]['count'] += 1  # type: ignore
+                    index[conn]['msgs'] += pack('<LLL', time, 0, offset)  # type: ignore
 
                     add = ser(head) + ser(data)
                     chunk_bytes += add
@@ -140,19 +160,19 @@ def write_bag(bag, header, chunks=None):  # pylint: disable=too-many-locals,too-
     if 'index_pos' not in header:
         header['index_pos'] = pack('<Q', pos)
 
-    header = ser(header)
-    header += b'\x20' * (4096 - len(header))
+    header_bytes = ser(header)
+    header_bytes += b'\x20' * (4096 - len(header_bytes))
 
     bag.write_bytes(b''.join([
         magic,
-        header,
+        header_bytes,
         chunks_bytes,
         connections,
         chunkinfos,
     ]))
 
 
-def test_indexdata():
+def test_indexdata() -> None:
     """Test IndexData sort sorder."""
     x42_1_0 = IndexData(42, 1, 0)
     x42_2_0 = IndexData(42, 2, 0)
@@ -175,7 +195,7 @@ def test_indexdata():
     assert not x42_1_0 > x43_3_0
 
 
-def test_reader(tmp_path):  # pylint: disable=too-many-statements
+def test_reader(tmp_path: Path) -> None:  # pylint: disable=too-many-statements
     """Test reader and deserializer on simple bag."""
     # empty bag
     bag = tmp_path / 'test.bag'
@@ -268,7 +288,7 @@ def test_reader(tmp_path):  # pylint: disable=too-many-statements
         assert msgs[0][2] == b'MSGCONTENT5'
 
 
-def test_user_errors(tmp_path):
+def test_user_errors(tmp_path: Path) -> None:
     """Test user errors."""
     bag = tmp_path / 'test.bag'
     write_bag(bag, create_default_header(), chunks=[[
@@ -281,7 +301,7 @@ def test_user_errors(tmp_path):
         next(reader.messages())
 
 
-def test_failure_cases(tmp_path):  # pylint: disable=too-many-statements
+def test_failure_cases(tmp_path: Path) -> None:  # pylint: disable=too-many-statements
     """Test failure cases."""
     bag = tmp_path / 'test.bag'
     with pytest.raises(ReaderError, match='does not exist'):

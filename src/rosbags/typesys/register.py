@@ -13,12 +13,14 @@ from . import types
 from .base import Nodetype, TypesysError
 
 if TYPE_CHECKING:
+    from typing import Any, Optional, Union
+
     from .base import Typesdict
 
 INTLIKE = re.compile('^u?(bool|int|float)')
 
 
-def get_typehint(desc: tuple) -> str:
+def get_typehint(desc: tuple[int, Union[str, tuple[tuple[int, str], Optional[int]]]]) -> str:
     """Get python type hint for field.
 
     Args:
@@ -29,18 +31,19 @@ def get_typehint(desc: tuple) -> str:
 
     """
     if desc[0] == Nodetype.BASE:
-        if match := INTLIKE.match(desc[1]):
+        if match := INTLIKE.match(desc[1]):  # type: ignore
             return match.group(1)
         return 'str'
 
     if desc[0] == Nodetype.NAME:
+        assert isinstance(desc[1], str)
         return desc[1].replace('/', '__')
 
     sub = desc[1][0]
     if INTLIKE.match(sub[1]):
         typ = 'bool8' if sub[1] == 'bool' else sub[1]
         return f'numpy.ndarray[Any, numpy.dtype[numpy.{typ}]]'
-    return f'list[{get_typehint(sub)}]'
+    return f'list[{get_typehint(sub)}]'  # type: ignore
 
 
 def generate_python_code(typs: Typesdict) -> str:
@@ -99,7 +102,7 @@ def generate_python_code(typs: Typesdict) -> str:
             '',
         ]
 
-    def get_ftype(ftype: tuple) -> tuple:
+    def get_ftype(ftype: tuple[int, Any]) -> tuple[int, Any]:
         if ftype[0] <= 2:
             return int(ftype[0]), ftype[1]
         return int(ftype[0]), ((int(ftype[1][0][0]), ftype[1][0][1]), ftype[1][1])
