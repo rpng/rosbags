@@ -3,12 +3,18 @@
 Changes
 =======
 
+0.9.8 - 2021-11-25
+------------------
+- Support bool and float constants in msg files
+
+
 0.9.7 - 2021-11-09
 ------------------
 - Fix parsing of const fields with string value
 - Parse empty msg definitions
 - Make packages PEP561 compliant
 - Parse msg bounded fields and default values
+
 
 0.9.6 - 2021-10-04
 ------------------
