@@ -45,7 +45,9 @@ comment
 
 const_dcl
   = 'string' identifier r'=(?!={79}\n)' r'[^\n]+'
+  / type_spec identifier '=' float_literal
   / type_spec identifier '=' integer_literal
+  / type_spec identifier '=' boolean_literal
 
 field_dcl
   = type_spec identifier default_value?
@@ -82,15 +84,17 @@ default_value
   = literal
 
 literal
-  = boolean_literal
-  / float_literal
+  = float_literal
   / integer_literal
+  / boolean_literal
   / string_literal
   / array_literal
 
 boolean_literal
-  = 'true'
-  / 'false'
+  = r'[tT][rR][uU][eE]'
+  / r'[fF][aA][lL][sS][eE]'
+  / '0'
+  / '1'
 
 integer_literal
   = hexadecimal_literal
@@ -283,7 +287,7 @@ class VisitorMSG(Visitor):
 
     def visit_boolean_literal(self, children: Any) -> Any:
         """Process boolean literal."""
-        return children[1] == 'TRUE'
+        return children.lower() in ['true', '1']
 
     def visit_float_literal(self, children: Any) -> Any:
         """Process float literal."""
