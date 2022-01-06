@@ -119,7 +119,8 @@ def generate_getsize_cdr(fields: list[Field]) -> tuple[CDRSerSize, int]:
                 else:
                     anext = align(subdesc)
                     if aligned < anext:
-                        lines.append(f'  pos = (pos + {anext} - 1) & -{anext}')
+                        lines.append(f'  if len(message.{fieldname}):')
+                        lines.append(f'    pos = (pos + {anext} - 1) & -{anext}')
                         aligned = anext
                     lines.append(f'  pos += len(message.{fieldname}) * {SIZEMAP[subdesc.args]}')
 
@@ -272,7 +273,8 @@ def generate_serialize_cdr(fields: list[Field], endianess: str) -> CDRSer:
                     if (endianess == 'le') != (sys.byteorder == 'little'):
                         lines.append('  val = val.byteswap()')
                     if aligned < (anext := align(subdesc)):
-                        lines.append(f'  pos = (pos + {anext} - 1) & -{anext}')
+                        lines.append('  if size:')
+                        lines.append(f'    pos = (pos + {anext} - 1) & -{anext}')
                     lines.append('  rawdata[pos:pos + size] = val.view(numpy.uint8)')
                     lines.append('  pos += size')
                     aligned = anext
@@ -417,7 +419,8 @@ def generate_deserialize_cdr(fields: list[Field], endianess: str) -> CDRDeser:
                 else:
                     lines.append(f'  length = size * {SIZEMAP[subdesc.args]}')
                     if aligned < (anext := align(subdesc)):
-                        lines.append(f'  pos = (pos + {anext} - 1) & -{anext}')
+                        lines.append('  if size:')
+                        lines.append(f'    pos = (pos + {anext} - 1) & -{anext}')
                     lines.append(
                         f'  val = numpy.frombuffer(rawdata, '
                         f'dtype=numpy.{subdesc.args}, count=size, offset=pos)',

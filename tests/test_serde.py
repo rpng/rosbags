@@ -167,6 +167,16 @@ test_msgs/msg/dynamic_64_s[] seq_msg_d6s
 test_msgs/msg/dynamic_s_64[] seq_msg_ds6
 """
 
+SU64_B = """
+uint64[] su64
+bool b
+"""
+
+SU64_U64 = """
+uint64[] su64
+uint64 u64
+"""
+
 
 @pytest.fixture()
 def _comparable() -> Generator[None, None, None]:
@@ -411,3 +421,43 @@ def test_cdr_to_ros1() -> None:
     header = std_msgs__msg__Header(stamp=builtin_interfaces__msg__Time(42, 666), frame_id='frame')
     msg_ros = cdr_to_ros1(serialize_cdr(header, 'std_msgs/msg/Header'), 'std_msgs/msg/Header')
     assert msg_ros == b'\x00\x00\x00\x00*\x00\x00\x00\x9a\x02\x00\x00\x05\x00\x00\x00frame'
+
+
+@pytest.mark.usefixtures('_comparable')
+def test_padding_empty_sequence() -> None:
+    """Test empty sequences do not add item padding."""
+    # pylint: disable=protected-access
+    register_types(dict(get_types_from_msg(SU64_B, 'test_msgs/msg/su64_b')))
+
+    su64_b = get_msgdef('test_msgs/msg/su64_b').cls
+    msg = su64_b(numpy.array([], dtype=numpy.uint64), True)
+
+    cdr = serialize_cdr(msg, msg.__msgtype__)
+    assert cdr[4:] == b'\x00\x00\x00\x00\x01'
+
+    ros1 = cdr_to_ros1(cdr, msg.__msgtype__)
+    assert ros1 == cdr[4:]
+
+    assert ros1_to_cdr(ros1, msg.__msgtype__) == cdr
+
+    assert deserialize_cdr(cdr, msg.__msgtype__) == msg
+
+
+@pytest.mark.usefixtures('_comparable')
+def test_align_after_empty_sequence() -> None:
+    """Test alignment after empty sequences."""
+    # pylint: disable=protected-access
+    register_types(dict(get_types_from_msg(SU64_U64, 'test_msgs/msg/su64_u64')))
+
+    su64_b = get_msgdef('test_msgs/msg/su64_u64').cls
+    msg = su64_b(numpy.array([], dtype=numpy.uint64), 42)
+
+    cdr = serialize_cdr(msg, msg.__msgtype__)
+    assert cdr[4:] == b'\x00\x00\x00\x00\x00\x00\x00\x00\x2a\x00\x00\x00\x00\x00\x00\x00'
+
+    ros1 = cdr_to_ros1(cdr, msg.__msgtype__)
+    assert ros1 == b'\x00\x00\x00\x00\x2a\x00\x00\x00\x00\x00\x00\x00'
+
+    assert ros1_to_cdr(ros1, msg.__msgtype__) == cdr
+
+    assert deserialize_cdr(cdr, msg.__msgtype__) == msg

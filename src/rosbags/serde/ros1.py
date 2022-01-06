@@ -151,7 +151,8 @@ def generate_ros1_to_cdr(
                     aligned = 1
                 else:
                     if aligned < (anext := align(subdesc)):
-                        lines.append(f'  opos = (opos + {anext} - 1) & -{anext}')
+                        lines.append('  if size:')
+                        lines.append(f'    opos = (opos + {anext} - 1) & -{anext}')
                     lines.append(f'  length = size * {SIZEMAP[subdesc.args]}')
                     if copy:
                         lines.append('  output[opos:opos + length] = input[ipos:ipos + length]')
@@ -304,7 +305,8 @@ def generate_cdr_to_ros1(
                     aligned = 1
                 else:
                     if aligned < (anext := align(subdesc)):
-                        lines.append(f'  ipos = (ipos + {anext} - 1) & -{anext}')
+                        lines.append('  if size:')
+                        lines.append(f'    ipos = (ipos + {anext} - 1) & -{anext}')
                     lines.append(f'  length = size * {SIZEMAP[subdesc.args]}')
                     if copy:
                         lines.append('  output[opos:opos + length] = input[ipos:ipos + length]')
