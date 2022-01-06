@@ -37,6 +37,7 @@ Instances of the :py:class:`Writer <rosbags.rosbag2.Writer>` class can create an
        connection = writer.add_connection(topic, msgtype, 'cdr', '')
 
        # serialize and write message
+       timestamp = 42
        message = String('hello world')
        writer.write(connection, timestamp, serialize_cdr(message, msgtype))
 

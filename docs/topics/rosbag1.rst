@@ -22,6 +22,7 @@ Instances of the :py:class:`Writer <rosbags.rosbag1.Writer>` class can create an
 
        # serialize and write message
        message = String('hello world')
+       timestamp = 42
        writer.write(connection, timestamp, cdr_to_ros1(serialize_cdr(message, msgtype), msgtype))
 
 Reading rosbag1
