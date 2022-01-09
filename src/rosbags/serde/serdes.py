@@ -126,7 +126,7 @@ def cdr_to_ros1(raw: bytes, typename: str) -> memoryview:
         None,
         0,
     )
-    assert ipos + 4 == len(raw)
+    assert ipos + 4 + 3 >= len(raw)
 
     raw = memoryview(raw)
     size = opos
@@ -138,6 +138,6 @@ def cdr_to_ros1(raw: bytes, typename: str) -> memoryview:
         rawdata,
         0,
     )
-    assert ipos + 4 == len(raw)
+    assert ipos + 4 + 3 >= len(raw)
     assert opos == size
     return rawdata.toreadonly()

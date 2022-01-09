@@ -1,7 +1,7 @@
 Convert Rosbag1 to Rosbag2
 ==========================
 
-The :py:mod:`rosbags.convert` package includes a CLI tool to convert legacy rosbag1 files to rosbag2.
+The :py:mod:`rosbags.convert` package includes a CLI tool to convert legacy rosbag1 files to rosbag2 and vice versa.
 
 Features
 --------
@@ -14,8 +14,9 @@ Features
 Limitations
 -----------
 
-- Refuses to convert unindexed rosbag files, please reindex files before conversion
+- Refuses to convert unindexed rosbag1 files, please reindex files before conversion
 - Currently does not handle split bags
+- Only ROS2 default message types are supported when converting rosbag2 to rosbag1
 
 Usage
 -----
@@ -25,5 +26,11 @@ Usage
    # Convert "foo.bag", result will be "foo/"
    $ rosbags-convert foo.bag
 
+   # Convert "bar", result will be "bar.bag"
+   $ rosbags-convert bar
+
    # Convert "foo.bag", save the result as "bar"
    $ rosbags-convert foo.bag --dst /path/to/bar
+
+   # Convert "bar", save the result as "foo.bag"
+   $ rosbags-convert bar --dst /path/to/foo.bag

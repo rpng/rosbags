@@ -39,18 +39,23 @@ def pathtype(exists: bool = True) -> Callable[[str], Path]:
 
 def main() -> None:
     """Parse cli arguments and run conversion."""
-    parser = argparse.ArgumentParser(description='Convert rosbag1 to rosbag2.')
+    parser = argparse.ArgumentParser(description='Convert between rosbag1 and rosbag2.')
     parser.add_argument(
         'src',
         type=pathtype(),
-        help='source path to read rosbag1 from',
+        help='source path to read rosbag1 or rosbag2 from',
     )
     parser.add_argument(
         '--dst',
         type=pathtype(exists=False),
-        help='destination path for rosbag2',
+        help='destination path for converted rosbag',
     )
+
     args = parser.parse_args()
+    if args.dst is not None and (args.src.suffix == '.bag') == (args.dst.suffix == '.bag'):
+        print('Source and destination rosbag versions must differ.')  # noqa: T001
+        sys.exit(1)
+
     try:
         convert(args.src, args.dst)
     except ConverterError as err:

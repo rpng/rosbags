@@ -46,13 +46,19 @@ Read and deserialize rosbag2 messages:
             print(msg.header.frame_id)
 
 
-Convert rosbag1 to rosbag2::
+Convert between rosbag versions::
 
    # Convert "foo.bag", result will be "foo/"
    rosbags-convert foo.bag
 
+   # Convert "bar", result will be "bar.bag"
+   rosbags-convert bar
+
    # Convert "foo.bag", save the result as "bar"
    rosbags-convert foo.bag --dst /path/to/bar
+
+   # Convert "bar", save the result as "foo.bag"
+   rosbags-convert bar --dst /path/to/foo.bag
 
 
 Documentation
