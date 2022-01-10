@@ -3,6 +3,17 @@
 Changes
 =======
 
+0.9.9 - 2022-01-10
+------------------
+- Fix documentation code samples `#15`_
+- Fix handling of padding after empty sequences `#14`_
+- Support conversion from rosbag2 to rosbag1 `#11`_
+
+.. _#11: https://gitlab.com/ternaris/rosbags/issues/11
+.. _#14: https://gitlab.com/ternaris/rosbags/issues/14
+.. _#15: https://gitlab.com/ternaris/rosbags/issues/15
+
+
 0.9.8 - 2021-11-25
 ------------------
 - Support bool and float constants in msg files
@@ -10,11 +21,13 @@ Changes
 
 0.9.7 - 2021-11-09
 ------------------
-- Fix parsing of const fields with string value
+- Fix parsing of const fields with string value `#9`_
 - Parse empty msg definitions
 - Make packages PEP561 compliant
-- Parse msg bounded fields and default values
+- Parse msg bounded fields and default values `#12`_
 
+.. _#9: https://gitlab.com/ternaris/rosbags/issues/9
+.. _#12: https://gitlab.com/ternaris/rosbags/issues/12
 
 0.9.6 - 2021-10-04
 ------------------
@@ -29,8 +42,10 @@ Changes
 0.9.4 - 2021-09-15
 ------------------
 - Make reader1 API match reader2
-- Fix connection mapping for reader2 messages
+- Fix connection mapping for reader2 messages `#1`_, `#8`_
 
+.. _#1: https://gitlab.com/ternaris/rosbags/issues/1
+.. _#8: https://gitlab.com/ternaris/rosbags/issues/8
 
 0.9.3 - 2021-08-06
 ------------------
