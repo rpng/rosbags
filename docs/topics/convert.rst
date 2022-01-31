@@ -1,5 +1,5 @@
-Convert Rosbag1 to Rosbag2
-==========================
+Convert rosbag versions
+=======================
 
 The :py:mod:`rosbags.convert` package includes a CLI tool to convert legacy rosbag1 files to rosbag2 and vice versa.
 
