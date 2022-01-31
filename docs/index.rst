@@ -16,6 +16,13 @@
    topics/rosbag1
    topics/convert
 
+.. toctree::
+   :caption: Usage examples
+   :maxdepth: 0
+   :hidden:
+   :glob:
+
+   examples/*
 
 .. toctree::
    :caption: API
