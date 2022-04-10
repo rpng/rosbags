@@ -31,9 +31,8 @@ def get_typehint(desc: tuple[int, Union[str, tuple[tuple[int, str], Optional[int
 
     """
     if desc[0] == Nodetype.BASE:
-        if match := INTLIKE.match(desc[1]):  # type: ignore
-            return match.group(1)
-        return 'str'
+        assert isinstance(desc[1], str)
+        return match.group(1) if (match := INTLIKE.match(desc[1])) else 'str'
 
     if desc[0] == Nodetype.NAME:
         assert isinstance(desc[1], str)
@@ -43,7 +42,8 @@ def get_typehint(desc: tuple[int, Union[str, tuple[tuple[int, str], Optional[int
     if INTLIKE.match(sub[1]):
         typ = 'bool8' if sub[1] == 'bool' else sub[1]
         return f'numpy.ndarray[Any, numpy.dtype[numpy.{typ}]]'
-    return f'list[{get_typehint(sub)}]'  # type: ignore
+    assert isinstance(sub, tuple)
+    return f'list[{get_typehint(sub)}]'
 
 
 def generate_python_code(typs: Typesdict) -> str:
@@ -142,6 +142,7 @@ def register_types(typs: Typesdict) -> None:
 
     Raises:
         TypesysError: Type already present with different definition.
+
     """
     code = generate_python_code(typs)
     name = 'rosbags.usertypes'
@@ -150,7 +151,7 @@ def register_types(typs: Typesdict) -> None:
     module = module_from_spec(spec)
     sys.modules[name] = module
     exec(code, module.__dict__)  # pylint: disable=exec-used
-    fielddefs: Typesdict = module.FIELDDEFS  # type: ignore
+    fielddefs: Typesdict = module.FIELDDEFS
 
     for name, (_, fields) in fielddefs.items():
         if name == 'std_msgs/msg/Header':

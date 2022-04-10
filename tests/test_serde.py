@@ -13,7 +13,10 @@ import pytest
 from rosbags.serde import SerdeError, cdr_to_ros1, deserialize_cdr, ros1_to_cdr, serialize_cdr
 from rosbags.serde.messages import get_msgdef
 from rosbags.typesys import get_types_from_msg, register_types
-from rosbags.typesys.types import builtin_interfaces__msg__Time, std_msgs__msg__Header
+from rosbags.typesys.types import builtin_interfaces__msg__Time as Time
+from rosbags.typesys.types import geometry_msgs__msg__Polygon as Polygon
+from rosbags.typesys.types import sensor_msgs__msg__MagneticField as MagneticField
+from rosbags.typesys.types import std_msgs__msg__Header as Header
 
 from .cdr import deserialize, serialize
 
@@ -184,6 +187,7 @@ def _comparable() -> Generator[None, None, None]:
 
     Notes:
         This solution is necessary as numpy.ndarray is not directly patchable.
+
     """
     frombuffer = numpy.frombuffer
 
@@ -195,16 +199,16 @@ def _comparable() -> Generator[None, None, None]:
     class CNDArray(MagicMock):
         """Mock ndarray."""
 
-        def __init__(self, *args: Any, **kwargs: Any):
+        def __init__(self, *args: Any, **kwargs: Any):  # noqa: ANN401
             super().__init__(*args, **kwargs)
             self.__eq__ = arreq  # type: ignore
 
-        def byteswap(self, *args: Any) -> 'CNDArray':
+        def byteswap(self, *args: Any) -> CNDArray:  # noqa: ANN401
             """Wrap return value also in mock."""
             return CNDArray(wraps=self._mock_wraps.byteswap(*args))
 
-    def wrap_frombuffer(*args: Any, **kwargs: Any) -> CNDArray:
-        return CNDArray(wraps=frombuffer(*args, **kwargs))  # type: ignore
+    def wrap_frombuffer(*args: Any, **kwargs: Any) -> CNDArray:  # noqa: ANN401
+        return CNDArray(wraps=frombuffer(*args, **kwargs))
 
     with patch.object(numpy, 'frombuffer', side_effect=wrap_frombuffer):
         yield
@@ -217,7 +221,7 @@ def test_serde(message: tuple[bytes, str, bool]) -> None:
 
     serdeser = serialize_cdr(deserialize_cdr(rawdata, typ), typ, is_little)
     assert serdeser == serialize(deserialize(rawdata, typ), typ, is_little)
-    assert serdeser == rawdata[0:len(serdeser)]
+    assert serdeser == rawdata[:len(serdeser)]
     assert len(rawdata) - len(serdeser) < 4
     assert all(x == 0 for x in rawdata[len(serdeser):])
 
@@ -227,6 +231,7 @@ def test_deserializer() -> None:
     """Test deserializer."""
     msg = deserialize_cdr(*MSG_POLY[:2])
     assert msg == deserialize(*MSG_POLY[:2])
+    assert isinstance(msg, Polygon)
     assert len(msg.points) == 2
     assert msg.points[0].x == 1
     assert msg.points[0].y == 2
@@ -237,6 +242,7 @@ def test_deserializer() -> None:
 
     msg = deserialize_cdr(*MSG_MAGN[:2])
     assert msg == deserialize(*MSG_MAGN[:2])
+    assert isinstance(msg, MagneticField)
     assert 'MagneticField' in repr(msg)
     assert msg.header.stamp.sec == 708
     assert msg.header.stamp.nanosec == 256
@@ -248,6 +254,7 @@ def test_deserializer() -> None:
 
     msg_big = deserialize_cdr(*MSG_MAGN_BIG[:2])
     assert msg_big == deserialize(*MSG_MAGN_BIG[:2])
+    assert isinstance(msg_big, MagneticField)
     assert msg.magnetic_field == msg_big.magnetic_field
 
 
@@ -285,7 +292,7 @@ def test_serializer_errors() -> None:
     class Foo:  # pylint: disable=too-few-public-methods
         """Dummy class."""
 
-        coef = numpy.array([1, 2, 3, 4])
+        coef: numpy.ndarray[Any, numpy.dtype[numpy.int_]] = numpy.array([1, 2, 3, 4])
 
     msg = Foo()
     ret = serialize_cdr(msg, 'shape_msgs/msg/Plane', True)
@@ -376,7 +383,8 @@ def test_custom_type() -> None:
 def test_ros1_to_cdr() -> None:
     """Test ROS1 to CDR conversion."""
     register_types(dict(get_types_from_msg(STATIC_16_64, 'test_msgs/msg/static_16_64')))
-    msg_ros = (b'\x01\x00' b'\x00\x00\x00\x00\x00\x00\x00\x02')
+    msg_ros = (b'\x01\x00'
+               b'\x00\x00\x00\x00\x00\x00\x00\x02')
     msg_cdr = (
         b'\x00\x01\x00\x00'
         b'\x01\x00'
@@ -386,7 +394,8 @@ def test_ros1_to_cdr() -> None:
     assert ros1_to_cdr(msg_ros, 'test_msgs/msg/static_16_64') == msg_cdr
 
     register_types(dict(get_types_from_msg(DYNAMIC_S_64, 'test_msgs/msg/dynamic_s_64')))
-    msg_ros = (b'\x01\x00\x00\x00X' b'\x00\x00\x00\x00\x00\x00\x00\x02')
+    msg_ros = (b'\x01\x00\x00\x00X'
+               b'\x00\x00\x00\x00\x00\x00\x00\x02')
     msg_cdr = (
         b'\x00\x01\x00\x00'
         b'\x02\x00\x00\x00X\x00'
@@ -399,7 +408,8 @@ def test_ros1_to_cdr() -> None:
 def test_cdr_to_ros1() -> None:
     """Test CDR to ROS1 conversion."""
     register_types(dict(get_types_from_msg(STATIC_16_64, 'test_msgs/msg/static_16_64')))
-    msg_ros = (b'\x01\x00' b'\x00\x00\x00\x00\x00\x00\x00\x02')
+    msg_ros = (b'\x01\x00'
+               b'\x00\x00\x00\x00\x00\x00\x00\x02')
     msg_cdr = (
         b'\x00\x01\x00\x00'
         b'\x01\x00'
@@ -409,7 +419,8 @@ def test_cdr_to_ros1() -> None:
     assert cdr_to_ros1(msg_cdr, 'test_msgs/msg/static_16_64') == msg_ros
 
     register_types(dict(get_types_from_msg(DYNAMIC_S_64, 'test_msgs/msg/dynamic_s_64')))
-    msg_ros = (b'\x01\x00\x00\x00X' b'\x00\x00\x00\x00\x00\x00\x00\x02')
+    msg_ros = (b'\x01\x00\x00\x00X'
+               b'\x00\x00\x00\x00\x00\x00\x00\x02')
     msg_cdr = (
         b'\x00\x01\x00\x00'
         b'\x02\x00\x00\x00X\x00'
@@ -418,7 +429,7 @@ def test_cdr_to_ros1() -> None:
     )
     assert cdr_to_ros1(msg_cdr, 'test_msgs/msg/dynamic_s_64') == msg_ros
 
-    header = std_msgs__msg__Header(stamp=builtin_interfaces__msg__Time(42, 666), frame_id='frame')
+    header = Header(stamp=Time(42, 666), frame_id='frame')
     msg_ros = cdr_to_ros1(serialize_cdr(header, 'std_msgs/msg/Header'), 'std_msgs/msg/Header')
     assert msg_ros == b'\x00\x00\x00\x00*\x00\x00\x00\x9a\x02\x00\x00\x05\x00\x00\x00frame'
 
@@ -426,7 +437,6 @@ def test_cdr_to_ros1() -> None:
 @pytest.mark.usefixtures('_comparable')
 def test_padding_empty_sequence() -> None:
     """Test empty sequences do not add item padding."""
-    # pylint: disable=protected-access
     register_types(dict(get_types_from_msg(SU64_B, 'test_msgs/msg/su64_b')))
 
     su64_b = get_msgdef('test_msgs/msg/su64_b').cls
@@ -446,7 +456,6 @@ def test_padding_empty_sequence() -> None:
 @pytest.mark.usefixtures('_comparable')
 def test_align_after_empty_sequence() -> None:
     """Test alignment after empty sequences."""
-    # pylint: disable=protected-access
     register_types(dict(get_types_from_msg(SU64_U64, 'test_msgs/msg/su64_u64')))
 
     su64_b = get_msgdef('test_msgs/msg/su64_u64').cls

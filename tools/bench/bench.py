@@ -21,7 +21,14 @@ from rosbags.rosbag2 import Reader
 from rosbags.serde import deserialize_cdr
 
 if TYPE_CHECKING:
-    from typing import Any, Generator
+    from typing import Generator, Protocol
+
+    class NativeMSG(Protocol):  # pylint: disable=too-few-public-methods
+        """Minimal native ROS message interface used for benchmark."""
+
+        def get_fields_and_field_types(self) -> dict[str, str]:
+            """Introspect message type."""
+            raise NotImplementedError
 
 
 class ReaderPy:  # pylint: disable=too-few-public-methods
@@ -42,13 +49,13 @@ class ReaderPy:  # pylint: disable=too-few-public-methods
             yield topic, self.typemap[topic], timestamp, data
 
 
-def deserialize_py(data: bytes, msgtype: str) -> Any:
+def deserialize_py(data: bytes, msgtype: str) -> NativeMSG:
     """Deserialization helper for rosidl_runtime_py + rclpy."""
     pytype = get_message(msgtype)
-    return deserialize_message(data, pytype)
+    return deserialize_message(data, pytype)  # type: ignore
 
 
-def compare_msg(lite: Any, native: Any) -> None:
+def compare_msg(lite: object, native: NativeMSG) -> None:
     """Compare rosbag2 (lite) vs rosbag2_py (native) message content.
 
     Args:
@@ -96,8 +103,8 @@ def compare(path: Path) -> None:
             msg = deserialize_cdr(data, connection.msgtype)
 
             compare_msg(msg, msg_py)
-        assert len(list(gens[0])) == 0
-        assert len(list(gens[1])) == 0
+        assert not list(gens[0])
+        assert not list(gens[1])
 
 
 def read_deser_rosbag2_py(path: Path) -> None:

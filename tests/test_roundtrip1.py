@@ -39,6 +39,6 @@ def test_roundtrip(tmp_path: Path, fmt: Optional[Writer.CompressionFormat]) -> N
         gen = rbag.messages()
         connection, _, raw = next(gen)
         msg = deserialize_cdr(ros1_to_cdr(raw, connection.msgtype), connection.msgtype)
-        assert msg.data == Foo.data
+        assert getattr(msg, 'data', None) == Foo.data
         with pytest.raises(StopIteration):
             next(gen)

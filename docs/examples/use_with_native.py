@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 NATIVE_CLASSES: dict[str, Any] = {}
 
 
-def to_native(msg: Any) -> Any:
+def to_native(msg: Any) -> Any:  # noqa: ANN401
     """Convert rosbags message to native message.
 
     Args:

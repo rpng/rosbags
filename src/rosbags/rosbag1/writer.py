@@ -31,6 +31,7 @@ class WriterError(Exception):
 @dataclass
 class WriteChunk:
     """In progress chunk."""
+
     data: BytesIO
     pos: int
     start: int
@@ -126,7 +127,7 @@ class Header(Dict[str, Any]):
         return size + 4
 
 
-class Writer:  # pylint: disable=too-many-instance-attributes
+class Writer:
     """Rosbag1 writer.
 
     This class implements writing of rosbag1 files in version 2.0. It should be
@@ -212,7 +213,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         md5sum: Optional[str] = None,
         callerid: Optional[str] = None,
         latching: Optional[int] = None,
-        **_kw: Any,
+        **_kw: Any,  # noqa: ANN401
     ) -> Connection:
         """Add a connection.
 

@@ -86,22 +86,22 @@ def generate_getsize_cdr(fields: list[Field]) -> tuple[CDRSerSize, int]:
 
             else:
                 assert subdesc.valtype == Valtype.MESSAGE
-                anext = align(subdesc)
+                anext_before = align(subdesc)
                 anext_after = align_after(subdesc)
 
                 if subdesc.args.size_cdr:
                     for _ in range(length):
-                        if anext > anext_after:
-                            lines.append(f'  pos = (pos + {anext} - 1) & -{anext}')
-                            size = (size + anext - 1) & -anext
+                        if anext_before > anext_after:
+                            lines.append(f'  pos = (pos + {anext_before} - 1) & -{anext_before}')
+                            size = (size + anext_before - 1) & -anext_before
                         lines.append(f'  pos += {subdesc.args.size_cdr}')
                         size += subdesc.args.size_cdr
                 else:
                     lines.append(f'  func = get_msgdef("{subdesc.args.name}").getsize_cdr')
                     lines.append(f'  val = message.{fieldname}')
                     for idx in range(length):
-                        if anext > anext_after:
-                            lines.append(f'  pos = (pos + {anext} - 1) & -{anext}')
+                        if anext_before > anext_after:
+                            lines.append(f'  pos = (pos + {anext_before} - 1) & -{anext_before}')
                         lines.append(f'  pos = func(pos, val[{idx}])')
                     is_stat = False
                 aligned = align_after(subdesc)
@@ -117,45 +117,45 @@ def generate_getsize_cdr(fields: list[Field]) -> tuple[CDRSerSize, int]:
                     lines.append('    pos += 4 + len(val.encode()) + 1')
                     aligned = 1
                 else:
-                    anext = align(subdesc)
-                    if aligned < anext:
+                    anext_before = align(subdesc)
+                    if aligned < anext_before:
                         lines.append(f'  if len(message.{fieldname}):')
-                        lines.append(f'    pos = (pos + {anext} - 1) & -{anext}')
-                        aligned = anext
+                        lines.append(f'    pos = (pos + {anext_before} - 1) & -{anext_before}')
+                        aligned = anext_before
                     lines.append(f'  pos += len(message.{fieldname}) * {SIZEMAP[subdesc.args]}')
 
             else:
                 assert subdesc.valtype == Valtype.MESSAGE
-                anext = align(subdesc)
+                anext_before = align(subdesc)
                 anext_after = align_after(subdesc)
                 lines.append(f'  val = message.{fieldname}')
                 if subdesc.args.size_cdr:
-                    if aligned < anext <= anext_after:
-                        lines.append(f'  pos = (pos + {anext} - 1) & -{anext}')
+                    if aligned < anext_before <= anext_after:
+                        lines.append(f'  pos = (pos + {anext_before} - 1) & -{anext_before}')
                     lines.append('  for _ in val:')
-                    if anext > anext_after:
-                        lines.append(f'    pos = (pos + {anext} - 1) & -{anext}')
+                    if anext_before > anext_after:
+                        lines.append(f'    pos = (pos + {anext_before} - 1) & -{anext_before}')
                     lines.append(f'    pos += {subdesc.args.size_cdr}')
 
                 else:
                     lines.append(f'  func = get_msgdef("{subdesc.args.name}").getsize_cdr')
-                    if aligned < anext <= anext_after:
-                        lines.append(f'  pos = (pos + {anext} - 1) & -{anext}')
+                    if aligned < anext_before <= anext_after:
+                        lines.append(f'  pos = (pos + {anext_before} - 1) & -{anext_before}')
                     lines.append('  for item in val:')
-                    if anext > anext_after:
-                        lines.append(f'    pos = (pos + {anext} - 1) & -{anext}')
+                    if anext_before > anext_after:
+                        lines.append(f'    pos = (pos + {anext_before} - 1) & -{anext_before}')
                     lines.append('    pos = func(pos, item)')
                 aligned = align_after(subdesc)
 
             aligned = min([aligned, 4])
             is_stat = False
 
-        if fnext and aligned < (anext := align(fnext.descriptor)):
-            lines.append(f'  pos = (pos + {anext} - 1) & -{anext}')
-            aligned = anext
+        if fnext and aligned < (anext_before := align(fnext.descriptor)):
+            lines.append(f'  pos = (pos + {anext_before} - 1) & -{anext_before}')
+            aligned = anext_before
             is_stat = False
     lines.append('  return pos')
-    return compile_lines(lines).getsize_cdr, is_stat * size  # type: ignore
+    return compile_lines(lines).getsize_cdr, is_stat * size
 
 
 def generate_serialize_cdr(fields: list[Field], endianess: str) -> CDRSer:
@@ -240,14 +240,14 @@ def generate_serialize_cdr(fields: list[Field], endianess: str) -> CDRSer:
 
             else:
                 assert subdesc.valtype == Valtype.MESSAGE
-                anext = align(subdesc)
+                anext_before = align(subdesc)
                 anext_after = align_after(subdesc)
                 lines.append(
                     f'  func = get_msgdef("{subdesc.args.name}").serialize_cdr_{endianess}',
                 )
                 for idx in range(length):
-                    if anext > anext_after:
-                        lines.append(f'  pos = (pos + {anext} - 1) & -{anext}')
+                    if anext_before > anext_after:
+                        lines.append(f'  pos = (pos + {anext_before} - 1) & -{anext_before}')
                     lines.append(f'  pos = func(rawdata, pos, val[{idx}])')
                 aligned = align_after(subdesc)
         else:
@@ -272,28 +272,28 @@ def generate_serialize_cdr(fields: list[Field], endianess: str) -> CDRSer:
                     lines.append(f'  size = len(val) * {SIZEMAP[subdesc.args]}')
                     if (endianess == 'le') != (sys.byteorder == 'little'):
                         lines.append('  val = val.byteswap()')
-                    if aligned < (anext := align(subdesc)):
+                    if aligned < (anext_before := align(subdesc)):
                         lines.append('  if size:')
-                        lines.append(f'    pos = (pos + {anext} - 1) & -{anext}')
+                        lines.append(f'    pos = (pos + {anext_before} - 1) & -{anext_before}')
                     lines.append('  rawdata[pos:pos + size] = val.view(numpy.uint8)')
                     lines.append('  pos += size')
-                    aligned = anext
+                    aligned = anext_before
 
             if subdesc.valtype == Valtype.MESSAGE:
-                anext = align(subdesc)
+                anext_before = align(subdesc)
                 lines.append(
                     f'  func = get_msgdef("{subdesc.args.name}").serialize_cdr_{endianess}',
                 )
                 lines.append('  for item in val:')
-                lines.append(f'    pos = (pos + {anext} - 1) & -{anext}')
+                lines.append(f'    pos = (pos + {anext_before} - 1) & -{anext_before}')
                 lines.append('    pos = func(rawdata, pos, item)')
                 aligned = align_after(subdesc)
 
             aligned = min([4, aligned])
 
-        if fnext and aligned < (anext := align(fnext.descriptor)):
-            lines.append(f'  pos = (pos + {anext} - 1) & -{anext}')
-            aligned = anext
+        if fnext and aligned < (anext_before := align(fnext.descriptor)):
+            lines.append(f'  pos = (pos + {anext_before} - 1) & -{anext_before}')
+            aligned = anext_before
     lines.append('  return pos')
     return compile_lines(lines).serialize_cdr  # type: ignore
 
@@ -384,13 +384,13 @@ def generate_deserialize_cdr(fields: list[Field], endianess: str) -> CDRDeser:
                     lines.append(f'  pos += {size}')
             else:
                 assert subdesc.valtype == Valtype.MESSAGE
-                anext = align(subdesc)
+                anext_before = align(subdesc)
                 anext_after = align_after(subdesc)
                 lines.append(f'  msgdef = get_msgdef("{subdesc.args.name}")')
                 lines.append('  value = []')
                 for _ in range(length):
-                    if anext > anext_after:
-                        lines.append(f'  pos = (pos + {anext} - 1) & -{anext}')
+                    if anext_before > anext_after:
+                        lines.append(f'  pos = (pos + {anext_before} - 1) & -{anext_before}')
                     lines.append(f'  obj, pos = msgdef.{funcname}(rawdata, pos, msgdef.cls)')
                     lines.append('  value.append(obj)')
                 lines.append('  values.append(value)')
@@ -418,9 +418,9 @@ def generate_deserialize_cdr(fields: list[Field], endianess: str) -> CDRDeser:
                     aligned = 1
                 else:
                     lines.append(f'  length = size * {SIZEMAP[subdesc.args]}')
-                    if aligned < (anext := align(subdesc)):
+                    if aligned < (anext_before := align(subdesc)):
                         lines.append('  if size:')
-                        lines.append(f'    pos = (pos + {anext} - 1) & -{anext}')
+                        lines.append(f'    pos = (pos + {anext_before} - 1) & -{anext_before}')
                     lines.append(
                         f'  val = numpy.frombuffer(rawdata, '
                         f'dtype=numpy.{subdesc.args}, count=size, offset=pos)',
@@ -429,14 +429,14 @@ def generate_deserialize_cdr(fields: list[Field], endianess: str) -> CDRDeser:
                         lines.append('  val = val.byteswap()')
                     lines.append('  values.append(val)')
                     lines.append('  pos += length')
-                    aligned = anext
+                    aligned = anext_before
 
             if subdesc.valtype == Valtype.MESSAGE:
-                anext = align(subdesc)
+                anext_before = align(subdesc)
                 lines.append(f'  msgdef = get_msgdef("{subdesc.args.name}")')
                 lines.append('  value = []')
                 lines.append('  for _ in range(size):')
-                lines.append(f'    pos = (pos + {anext} - 1) & -{anext}')
+                lines.append(f'    pos = (pos + {anext_before} - 1) & -{anext_before}')
                 lines.append(f'    obj, pos = msgdef.{funcname}(rawdata, pos, msgdef.cls)')
                 lines.append('    value.append(obj)')
                 lines.append('  values.append(value)')
@@ -444,9 +444,9 @@ def generate_deserialize_cdr(fields: list[Field], endianess: str) -> CDRDeser:
 
             aligned = min([4, aligned])
 
-        if fnext and aligned < (anext := align(fnext.descriptor)):
-            lines.append(f'  pos = (pos + {anext} - 1) & -{anext}')
-            aligned = anext
+        if fnext and aligned < (anext_before := align(fnext.descriptor)):
+            lines.append(f'  pos = (pos + {anext_before} - 1) & -{anext_before}')
+            aligned = anext_before
 
     lines.append('  return cls(*values), pos')
     return compile_lines(lines).deserialize_cdr  # type: ignore

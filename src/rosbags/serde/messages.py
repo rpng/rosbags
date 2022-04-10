@@ -14,7 +14,7 @@ from .typing import Descriptor, Field, Msgdef
 from .utils import Valtype
 
 if TYPE_CHECKING:
-    from typing import Any
+    from rosbags.typesys.base import Fielddesc
 
 MSGDEFCACHE: dict[str, Msgdef] = {}
 
@@ -38,14 +38,18 @@ def get_msgdef(typename: str) -> Msgdef:
     if typename not in MSGDEFCACHE:
         entries = types.FIELDDEFS[typename][1]
 
-        def fixup(entry: Any) -> Descriptor:
+        def fixup(entry: Fielddesc) -> Descriptor:
             if entry[0] == Valtype.BASE:
+                assert isinstance(entry[1], str)
                 return Descriptor(Valtype.BASE, entry[1])
             if entry[0] == Valtype.MESSAGE:
+                assert isinstance(entry[1], str)
                 return Descriptor(Valtype.MESSAGE, get_msgdef(entry[1]))
             if entry[0] == Valtype.ARRAY:
+                assert not isinstance(entry[1][0], str)
                 return Descriptor(Valtype.ARRAY, (fixup(entry[1][0]), entry[1][1]))
             if entry[0] == Valtype.SEQUENCE:
+                assert not isinstance(entry[1][0], str)
                 return Descriptor(Valtype.SEQUENCE, (fixup(entry[1][0]), entry[1][1]))
             raise SerdeError(  # pragma: no cover
                 f'Unknown field type {entry[0]!r} encountered.',

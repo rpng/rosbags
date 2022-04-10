@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from typing import Any
 
 
-def deserialize_cdr(rawdata: bytes, typename: str) -> Any:
+def deserialize_cdr(rawdata: bytes, typename: str) -> Any:  # noqa: ANN401
     """Deserialize raw data into a message object.
 
     Args:
@@ -35,7 +35,7 @@ def deserialize_cdr(rawdata: bytes, typename: str) -> Any:
 
 
 def serialize_cdr(
-    message: Any,
+    message: object,
     typename: str,
     little_endian: bool = sys.byteorder == 'little',
 ) -> memoryview:

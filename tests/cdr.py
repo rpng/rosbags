@@ -117,7 +117,7 @@ def deserialize_array(rawdata: bytes, bmap: BasetypeMap, pos: int, num: int, des
 
         size = SIZEMAP[desc.args]
         pos = (pos + size - 1) & -size
-        ndarr = numpy.frombuffer(rawdata, dtype=desc.args, count=num, offset=pos)  # type: ignore
+        ndarr = numpy.frombuffer(rawdata, dtype=desc.args, count=num, offset=pos)
         if (bmap is BASETYPEMAP_LE) != (sys.byteorder == 'little'):
             ndarr = ndarr.byteswap()  # no inplace on readonly array
         return ndarr, pos + num * SIZEMAP[desc.args]
@@ -297,7 +297,7 @@ def serialize_message(
     rawdata: memoryview,
     bmap: BasetypeMap,
     pos: int,
-    message: Any,
+    message: object,
     msgdef: Msgdef,
 ) -> int:
     """Serialize a message.
@@ -369,7 +369,7 @@ def get_array_size(desc: Descriptor, val: Array, size: int) -> int:
     raise SerdeError(f'Nested arrays {desc!r} are not supported.')  # pragma: no cover
 
 
-def get_size(message: Any, msgdef: Msgdef, size: int = 0) -> int:
+def get_size(message: object, msgdef: Msgdef, size: int = 0) -> int:
     """Calculate size of serialzied message.
 
     Args:
@@ -413,7 +413,7 @@ def get_size(message: Any, msgdef: Msgdef, size: int = 0) -> int:
 
 
 def serialize(
-    message: Any,
+    message: object,
     typename: str,
     little_endian: bool = sys.byteorder == 'little',
 ) -> memoryview:

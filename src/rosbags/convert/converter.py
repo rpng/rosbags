@@ -171,5 +171,5 @@ def convert(src: Path, dst: Optional[Path]) -> None:
         raise ConverterError(f'Reading source bag: {err}') from err
     except (WriterError1, WriterError2) as err:
         raise ConverterError(f'Writing destination bag: {err}') from err
-    except Exception as err:  # pylint: disable=broad-except
+    except Exception as err:
         raise ConverterError(f'Converting rosbag: {err!r}') from err

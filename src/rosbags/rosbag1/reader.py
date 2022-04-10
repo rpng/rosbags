@@ -106,9 +106,9 @@ class IndexData(NamedTuple):
 
     def __eq__(self, other: object) -> bool:
         """Compare by time only."""
-        if not isinstance(other, IndexData):  # pragma: no cover
-            return NotImplemented
-        return self.time == other[0]
+        if isinstance(other, IndexData):
+            return self.time == other[0]
+        return NotImplemented  # pragma: no cover
 
     def __ge__(self, other: tuple[int, ...]) -> bool:
         """Compare by time only."""
@@ -120,9 +120,9 @@ class IndexData(NamedTuple):
 
     def __ne__(self, other: object) -> bool:
         """Compare by time only."""
-        if not isinstance(other, IndexData):  # pragma: no cover
-            return NotImplemented
-        return self.time != other[0]
+        if isinstance(other, IndexData):
+            return self.time != other[0]
+        return NotImplemented  # pragma: no cover
 
 
 deserialize_uint8: Callable[[bytes], tuple[int]] = struct.Struct('<B').unpack  # type: ignore
@@ -369,7 +369,7 @@ class Reader:
         self.current_chunk: tuple[int, BinaryIO] = (-1, BytesIO())
         self.topics: dict[str, TopicInfo] = {}
 
-    def open(self) -> None:  # pylint: disable=too-many-branches,too-many-locals,too-many-statements
+    def open(self) -> None:  # pylint: disable=too-many-branches,too-many-locals
         """Open rosbag and read metadata."""
         try:
             self.bio = self.path.open('rb')
@@ -394,13 +394,11 @@ class Reader:
             conn_count = header.get_uint32('conn_count')
             chunk_count = header.get_uint32('chunk_count')
             try:
-                encryptor = header.get_string('encryptor')
-                if encryptor:
-                    raise ValueError
-            except ValueError:
-                raise ReaderError(f'Bag encryption {encryptor!r} is not supported.') from None
+                encryptor: Optional[str] = header.get_string('encryptor')
             except ReaderError:
-                pass
+                encryptor = None
+            if encryptor:
+                raise ReaderError(f'Bag encryption {encryptor!r} is not supported.') from None
 
             if index_pos == 0:
                 raise ReaderError('Bag is not indexed, reindex before reading.')

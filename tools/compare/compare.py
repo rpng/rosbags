@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import Mock
 
 import genpy  # type: ignore
+import numpy
 import rosgraph_msgs.msg  # type: ignore
 from rclpy.serialization import deserialize_message  # type: ignore
 from rosbag2_py import ConverterOptions, SequentialReader, StorageOptions  # type: ignore
@@ -25,9 +26,15 @@ rosgraph_msgs.msg.TopicStatistics = Mock()
 import rosbag.bag  # type:ignore  # noqa: E402  pylint: disable=wrong-import-position
 
 if TYPE_CHECKING:
-    from typing import Any, Generator, List, Union
+    from typing import Generator, List, Protocol, Union, runtime_checkable
 
-    from rosbag.bag import _Connection_Info
+    @runtime_checkable
+    class NativeMSG(Protocol):  # pylint: disable=too-few-public-methods
+        """Minimal native ROS message interface used for benchmark."""
+
+        def get_fields_and_field_types(self) -> dict[str, str]:
+            """Introspect message type."""
+            raise NotImplementedError
 
 
 class Reader:  # pylint: disable=too-few-public-methods
@@ -47,7 +54,7 @@ class Reader:  # pylint: disable=too-few-public-methods
             yield topic, timestamp, deserialize_message(data, pytype)
 
 
-def fixup_ros1(conns: List[_Connection_Info]) -> None:
+def fixup_ros1(conns: List[rosbag.bag._Connection_Info]) -> None:
     """Monkeypatch ROS2 fieldnames onto ROS1 objects.
 
     Args:
@@ -61,7 +68,6 @@ def fixup_ros1(conns: List[_Connection_Info]) -> None:
 
     if conn := next((x for x in conns if x.datatype == 'sensor_msgs/CameraInfo'), None):
         print('Patching CameraInfo')  # noqa: T001
-        # pylint: disable=assignment-from-no-return,too-many-function-args
         cls = rosbag.bag._get_message_type(conn)  # pylint: disable=protected-access
         cls.d = property(lambda x: x.D, lambda x, y: setattr(x, 'D', y))  # noqa: B010
         cls.k = property(lambda x: x.K, lambda x, y: setattr(x, 'K', y))  # noqa: B010
@@ -69,7 +75,7 @@ def fixup_ros1(conns: List[_Connection_Info]) -> None:
         cls.p = property(lambda x: x.P, lambda x, y: setattr(x, 'P', y))  # noqa: B010
 
 
-def compare(ref: Any, msg: Any) -> None:
+def compare(ref: object, msg: object) -> None:
     """Compare message to its reference.
 
     Args:
@@ -77,7 +83,7 @@ def compare(ref: Any, msg: Any) -> None:
         msg: Converted ROS2 message.
 
     """
-    if hasattr(msg, 'get_fields_and_field_types'):
+    if isinstance(msg, NativeMSG):
         for name in msg.get_fields_and_field_types():
             refval = getattr(ref, name)
             msgval = getattr(msg, name)
@@ -87,9 +93,11 @@ def compare(ref: Any, msg: Any) -> None:
         if isinstance(ref, bytes):
             assert msg.tobytes() == ref
         else:
+            assert isinstance(msg, numpy.ndarray)
             assert (msg == ref).all()
 
     elif isinstance(msg, list):
+        assert isinstance(ref, (list, numpy.ndarray))
         assert len(msg) == len(ref)
         for refitem, msgitem in zip(ref, msg):
             compare(refitem, msgitem)
@@ -97,8 +105,9 @@ def compare(ref: Any, msg: Any) -> None:
     elif isinstance(msg, str):
         assert msg == ref
 
-    elif isinstance(msg, float) and math.isnan(ref):
-        assert math.isnan(msg)
+    elif isinstance(msg, float) and math.isnan(msg):
+        assert isinstance(ref, float)
+        assert math.isnan(ref)
 
     else:
         assert ref == msg

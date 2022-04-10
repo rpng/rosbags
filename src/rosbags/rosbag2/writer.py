@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     from types import TracebackType
     from typing import Any, Literal, Optional, Type, Union
 
+    from .reader import Metadata
+
 
 class WriterError(Exception):
     """Writer Error."""
@@ -125,7 +127,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         msgtype: str,
         serialization_format: str = 'cdr',
         offered_qos_profiles: str = '',
-        **_kw: Any,
+        **_kw: Any,  # noqa: ANN401
     ) -> Connection:
         """Add a connection.
 
@@ -218,7 +220,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
                 self.compressor.copy_stream(infile, outfile)
             src.unlink()
 
-        metadata = {
+        metadata: dict[str, Metadata] = {
             'rosbag2_bagfile_information': {
                 'version': 4,
                 'storage_identifier': 'sqlite3',

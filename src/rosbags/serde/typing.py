@@ -13,8 +13,8 @@ if TYPE_CHECKING:
     BitcvtSize = Callable[[bytes, int, None, int], Tuple[int, int]]
 
     CDRDeser = Callable[[bytes, int, type], Tuple[Any, int]]
-    CDRSer = Callable[[bytes, int, type], int]
-    CDRSerSize = Callable[[int, type], int]
+    CDRSer = Callable[[bytes, int, object], int]
+    CDRSerSize = Callable[[int, object], int]
 
 
 class Descriptor(NamedTuple):

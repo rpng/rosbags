@@ -18,7 +18,7 @@ from .typing import Field
 from .utils import SIZEMAP, Valtype, align, align_after, compile_lines
 
 if TYPE_CHECKING:
-    from typing import Union  # pylint: disable=ungrouped-imports
+    from typing import Union
 
     from .typing import Bitcvt, BitcvtSize
 
@@ -114,13 +114,13 @@ def generate_ros1_to_cdr(
                     aligned = SIZEMAP[subdesc.args]
 
             if subdesc.valtype == Valtype.MESSAGE:
-                anext = align(subdesc)
+                anext_before = align(subdesc)
                 anext_after = align_after(subdesc)
 
                 lines.append(f'  func = get_msgdef("{subdesc.args.name}").{funcname}')
                 for _ in range(length):
-                    if anext > anext_after:
-                        lines.append(f'  opos = (opos + {anext} - 1) & -{anext}')
+                    if anext_before > anext_after:
+                        lines.append(f'  opos = (opos + {anext_before} - 1) & -{anext_before}')
                     lines.append('  ipos, opos = func(input, ipos, output, opos)')
                 aligned = anext_after
         else:
@@ -150,30 +150,30 @@ def generate_ros1_to_cdr(
                     lines.append('    opos += length')
                     aligned = 1
                 else:
-                    if aligned < (anext := align(subdesc)):
+                    if aligned < (anext_before := align(subdesc)):
                         lines.append('  if size:')
-                        lines.append(f'    opos = (opos + {anext} - 1) & -{anext}')
+                        lines.append(f'    opos = (opos + {anext_before} - 1) & -{anext_before}')
                     lines.append(f'  length = size * {SIZEMAP[subdesc.args]}')
                     if copy:
                         lines.append('  output[opos:opos + length] = input[ipos:ipos + length]')
                     lines.append('  ipos += length')
                     lines.append('  opos += length')
-                    aligned = anext
+                    aligned = anext_before
 
             else:
                 assert subdesc.valtype == Valtype.MESSAGE
-                anext = align(subdesc)
+                anext_before = align(subdesc)
                 lines.append(f'  func = get_msgdef("{subdesc.args.name}").{funcname}')
                 lines.append('  for _ in range(size):')
-                lines.append(f'    opos = (opos + {anext} - 1) & -{anext}')
+                lines.append(f'    opos = (opos + {anext_before} - 1) & -{anext_before}')
                 lines.append('    ipos, opos = func(input, ipos, output, opos)')
                 aligned = align_after(subdesc)
 
             aligned = min([aligned, 4])
 
-        if fnext and aligned < (anext := align(fnext.descriptor)):
-            lines.append(f'  opos = (opos + {anext} - 1) & -{anext}')
-            aligned = anext
+        if fnext and aligned < (anext_before := align(fnext.descriptor)):
+            lines.append(f'  opos = (opos + {anext_before} - 1) & -{anext_before}')
+            aligned = anext_before
 
     lines.append('  return ipos, opos')
     return getattr(compile_lines(lines), funcname)  # type: ignore
@@ -270,13 +270,13 @@ def generate_cdr_to_ros1(
                     aligned = SIZEMAP[subdesc.args]
 
             if subdesc.valtype == Valtype.MESSAGE:
-                anext = align(subdesc)
+                anext_before = align(subdesc)
                 anext_after = align_after(subdesc)
 
                 lines.append(f'  func = get_msgdef("{subdesc.args.name}").{funcname}')
                 for _ in range(length):
-                    if anext > anext_after:
-                        lines.append(f'  ipos = (ipos + {anext} - 1) & -{anext}')
+                    if anext_before > anext_after:
+                        lines.append(f'  ipos = (ipos + {anext_before} - 1) & -{anext_before}')
                     lines.append('  ipos, opos = func(input, ipos, output, opos)')
                 aligned = anext_after
         else:
@@ -304,30 +304,30 @@ def generate_cdr_to_ros1(
                     lines.append('    opos += length')
                     aligned = 1
                 else:
-                    if aligned < (anext := align(subdesc)):
+                    if aligned < (anext_before := align(subdesc)):
                         lines.append('  if size:')
-                        lines.append(f'    ipos = (ipos + {anext} - 1) & -{anext}')
+                        lines.append(f'    ipos = (ipos + {anext_before} - 1) & -{anext_before}')
                     lines.append(f'  length = size * {SIZEMAP[subdesc.args]}')
                     if copy:
                         lines.append('  output[opos:opos + length] = input[ipos:ipos + length]')
                     lines.append('  ipos += length')
                     lines.append('  opos += length')
-                    aligned = anext
+                    aligned = anext_before
 
             else:
                 assert subdesc.valtype == Valtype.MESSAGE
-                anext = align(subdesc)
+                anext_before = align(subdesc)
                 lines.append(f'  func = get_msgdef("{subdesc.args.name}").{funcname}')
                 lines.append('  for _ in range(size):')
-                lines.append(f'    ipos = (ipos + {anext} - 1) & -{anext}')
+                lines.append(f'    ipos = (ipos + {anext_before} - 1) & -{anext_before}')
                 lines.append('    ipos, opos = func(input, ipos, output, opos)')
                 aligned = align_after(subdesc)
 
             aligned = min([aligned, 4])
 
-        if fnext and aligned < (anext := align(fnext.descriptor)):
-            lines.append(f'  ipos = (ipos + {anext} - 1) & -{anext}')
-            aligned = anext
+        if fnext and aligned < (anext_before := align(fnext.descriptor)):
+            lines.append(f'  ipos = (ipos + {anext_before} - 1) & -{anext_before}')
+            aligned = anext_before
 
     lines.append('  return ipos, opos')
     return getattr(compile_lines(lines), funcname)  # type: ignore

@@ -38,6 +38,6 @@ def test_roundtrip(mode: Writer.CompressionMode, tmp_path: Path) -> None:
         rconnection, _, raw = next(gen)
         assert rconnection == wconnection
         msg = deserialize_cdr(raw, rconnection.msgtype)
-        assert msg.data == Foo.data
+        assert getattr(msg, 'data', None) == Foo.data
         with pytest.raises(StopIteration):
             next(gen)

@@ -33,7 +33,7 @@ def save_images() -> None:
                     frame_id=FRAMEID,
                 ),
                 format='jpeg',  # could also be 'png'
-                data=numpy.fromfile(path, dtype=numpy.uint8),  # type: ignore
+                data=numpy.fromfile(path, dtype=numpy.uint8),
             )
 
             writer.write(

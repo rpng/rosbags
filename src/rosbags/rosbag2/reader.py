@@ -18,7 +18,44 @@ from .connection import Connection
 
 if TYPE_CHECKING:
     from types import TracebackType
-    from typing import Any, Generator, Iterable, Literal, Optional, Type, Union
+    from typing import Any, Generator, Iterable, Literal, Optional, Type, TypedDict, Union
+
+    class StartingTime(TypedDict):
+        """Bag starting time."""
+
+        nanoseconds_since_epoch: int
+
+    class Duration(TypedDict):
+        """Bag starting time."""
+
+        nanoseconds: int
+
+    class TopicMetadata(TypedDict):
+        """Topic metadata."""
+
+        name: str
+        type: str
+        serialization_format: str
+        offered_qos_profiles: str
+
+    class TopicWithMessageCount(TypedDict):
+        """Topic with message count."""
+
+        message_count: int
+        topic_metadata: TopicMetadata
+
+    class Metadata(TypedDict):
+        """Rosbag2 metadata file."""
+
+        version: int
+        storage_identifier: str
+        relative_file_paths: list[str]
+        starting_time: StartingTime
+        duration: Duration
+        message_count: int
+        compression_format: str
+        compression_mode: str
+        topics_with_message_count: list[TopicWithMessageCount]
 
 
 class ReaderError(Exception):
@@ -72,13 +109,14 @@ class Reader:
 
         Raises:
             ReaderError: Bag not readable or bag metadata.
+
         """
         path = Path(path)
-        self.path = Path
+        yamlpath = path / 'metadata.yaml'
+        self.path = path
         self.bio = False
         try:
             yaml = YAML(typ='safe')
-            yamlpath = path / 'metadata.yaml'
             dct = yaml.load(yamlpath.read_text())
         except OSError as err:
             raise ReaderError(f'Could not read metadata at {yamlpath}: {err}.') from None
@@ -86,7 +124,7 @@ class Reader:
             raise ReaderError(f'Could not load YAML from {yamlpath}: {exc}') from None
 
         try:
-            self.metadata = dct['rosbag2_bagfile_information']
+            self.metadata: Metadata = dct['rosbag2_bagfile_information']
             if (ver := self.metadata['version']) > 4:
                 raise ReaderError(f'Rosbag2 version {ver} not supported; please report issue.')
             if storageid := self.metadata['storage_identifier'] != 'sqlite3':
@@ -95,8 +133,7 @@ class Reader:
                 )
 
             self.paths = [path / Path(x).name for x in self.metadata['relative_file_paths']]
-            missing = [x for x in self.paths if not x.exists()]
-            if missing:
+            if missing := [x for x in self.paths if not x.exists()]:
                 raise ReaderError(f'Some database files are missing: {[str(x) for x in missing]!r}')
 
             self.connections = {
@@ -110,7 +147,7 @@ class Reader:
                 ) for idx, x in enumerate(self.metadata['topics_with_message_count'])
             }
             noncdr = {
-                y for x in self.connections.values() if (y := x.serialization_format) != 'cdr'
+                fmt for x in self.connections.values() if (fmt := x.serialization_format) != 'cdr'
             }
             if noncdr:
                 raise ReaderError(f'Serialization format {noncdr!r} is not supported.')
@@ -140,8 +177,7 @@ class Reader:
     @property
     def start_time(self) -> int:
         """Timestamp in nanoseconds of the earliest message."""
-        nsecs: int = self.metadata['starting_time']['nanoseconds_since_epoch']
-        return nsecs
+        return self.metadata['starting_time']['nanoseconds_since_epoch']
 
     @property
     def end_time(self) -> int:
@@ -151,8 +187,7 @@ class Reader:
     @property
     def message_count(self) -> int:
         """Total message count."""
-        count: int = self.metadata['message_count']
-        return count
+        return self.metadata['message_count']
 
     @property
     def compression_format(self) -> Optional[str]:
