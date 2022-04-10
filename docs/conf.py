@@ -1,4 +1,4 @@
-# Copyright 2020-2021  Ternaris.
+# Copyright 2020-2022  Ternaris.
 # SPDX-License-Identifier: Apache-2.0
 """Sphinx config."""
 
@@ -18,7 +18,7 @@ import sphinx_rtd_theme  # type: ignore  # noqa
 typing.TYPE_CHECKING = True
 
 project = 'Rosbags'
-copyright = '2020-2021, Ternaris'
+copyright = '2020-2022, Ternaris'
 author = 'Ternaris'
 
 autoapi_python_use_implicit_namespaces = True

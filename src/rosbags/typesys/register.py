@@ -1,4 +1,4 @@
-# Copyright 2020-2021  Ternaris.
+# Copyright 2020-2022  Ternaris.
 # SPDX-License-Identifier: Apache-2.0
 """Code generators and registration functions for the extensible type system."""
 
@@ -57,7 +57,7 @@ def generate_python_code(typs: Typesdict) -> str:
 
     """
     lines = [
-        '# Copyright 2020-2021  Ternaris.',
+        '# Copyright 2020-2022  Ternaris.',
         '# SPDX-License-Identifier: Apache-2.0',
         '#',
         '# THIS FILE IS GENERATED, DO NOT EDIT',
