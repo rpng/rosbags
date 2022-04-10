@@ -5,13 +5,13 @@
 import typing
 
 # https://github.com/sphinx-doc/sphinx/issues/9243
-# pylint: disable=unused-import
-import sphinx.builders.html  # noqa
-import sphinx.builders.latex  # noqa
-import sphinx.builders.texinfo  # noqa
-import sphinx.builders.text  # noqa
-import sphinx.ext.autodoc  # noqa
-import sphinx_rtd_theme  # type: ignore  # noqa
+import sphinx.builders.html as _1
+import sphinx.builders.latex as _2
+import sphinx.builders.texinfo as _3
+import sphinx.builders.text as _4
+import sphinx.ext.autodoc as _5
+
+__all__ = ['_1', '_2', '_3', '_4', '_5']
 
 # pylint: disable=invalid-name,redefined-builtin
 
