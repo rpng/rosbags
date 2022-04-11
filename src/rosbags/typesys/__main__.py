@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from itertools import groupby
 from os import walk
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -16,6 +17,19 @@ if TYPE_CHECKING:
     from .base import Typesdict
 
 
+def generate_docs(typs: Typesdict) -> str:
+    """Generate types documentation."""
+    res = []
+    for namespace, msgs in groupby([x.split('/msg/') for x in typs], key=lambda x: x[0]):
+        res.append(namespace)
+        res.append('*' * len(namespace))
+
+        for _, msg in msgs:
+            res.append(f'- :py:class:`{msg} <rosbags.typesys.types.{namespace}__msg__{msg}>`')
+        res.append('')
+    return '\n'.join(res)
+
+
 def main() -> None:  # pragma: no cover
     """Update builtin types.
 
@@ -24,6 +38,7 @@ def main() -> None:  # pragma: no cover
     """
     typs: Typesdict = {}
     selfdir = Path(__file__).parent
+    projectdir = selfdir.parent.parent.parent
     for root, dirnames, files in walk(selfdir.parents[2] / 'tools' / 'messages'):
         if '.rosbags_ignore' in files:
             dirnames.clear()
@@ -40,6 +55,7 @@ def main() -> None:  # pragma: no cover
     typs = dict(sorted(typs.items()))
     register_types(typs)
     (selfdir / 'types.py').write_text(generate_python_code(typs))
+    (projectdir / 'docs' / 'topics' / 'typesys-types.rst').write_text(generate_docs(typs))
 
 
 if __name__ == '__main__':

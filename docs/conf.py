@@ -22,6 +22,7 @@ copyright = '2020-2022, Ternaris'
 author = 'Ternaris'
 
 autoapi_python_use_implicit_namespaces = True
+autodoc_typehints = 'description'
 
 extensions = [
     'sphinx.ext.autodoc',

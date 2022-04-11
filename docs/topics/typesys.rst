@@ -13,6 +13,11 @@ The type system generates a dataclass for each message type. These dataclasses g
 
    Limitation: While the type system parses message definitions with array bounds and/or default values, neither bounds nor default values are enforced or assigned to message instances.
 
+Included message types
+----------------------
+
+.. include:: ./typesys-types.rst
+
 Extending the type system
 -------------------------
 Adding custom message types consists of two steps. First, message definitions are converted into parse trees using :py:func:`get_types_from_idl() <rosbags.typesys.get_types_from_idl>` or :py:func:`get_types_from_msg() <rosbags.typesys.get_types_from_msg>`, and second the types are registered in the type system via :py:func:`register_types() <rosbags.typesys.register_types>`. The following example shows how to add messages type definitions from ``.msg`` and ``.idl`` files:

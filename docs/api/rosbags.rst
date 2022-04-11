@@ -9,3 +9,4 @@ Rosbags namespace
    rosbags.rosbag2
    rosbags.serde
    rosbags.typesys
+   rosbags.typesys.types
