@@ -13,9 +13,15 @@ from . import types
 from .base import Nodetype, TypesysError
 
 if TYPE_CHECKING:
-    from typing import Any, Optional, Union
+    from typing import Any, Optional, Protocol, Union
 
     from .base import Typesdict
+
+    class Typestore(Protocol):  # pylint: disable=too-few-public-methods
+        """Type storage."""
+
+        FIELDDEFS: Typesdict
+
 
 INTLIKE = re.compile('^u?(bool|int|float)')
 
@@ -134,11 +140,12 @@ def generate_python_code(typs: Typesdict) -> str:
     return '\n'.join(lines)
 
 
-def register_types(typs: Typesdict) -> None:
+def register_types(typs: Typesdict, typestore: Typestore = types) -> None:
     """Register types in type system.
 
     Args:
         typs: Dictionary mapping message typenames to parsetrees.
+        typestore: Type store.
 
     Raises:
         TypesysError: Type already present with different definition.
@@ -156,14 +163,14 @@ def register_types(typs: Typesdict) -> None:
     for name, (_, fields) in fielddefs.items():
         if name == 'std_msgs/msg/Header':
             continue
-        if have := types.FIELDDEFS.get(name):
+        if have := typestore.FIELDDEFS.get(name):
             _, have_fields = have
             have_fields = [(x[0].lower(), x[1]) for x in have_fields]
             fields = [(x[0].lower(), x[1]) for x in fields]
             if have_fields != fields:
                 raise TypesysError(f'Type {name!r} is already present with different definition.')
 
-    for name in fielddefs.keys() - types.FIELDDEFS.keys():
+    for name in fielddefs.keys() - typestore.FIELDDEFS.keys():
         pyname = name.replace('/', '__')
-        setattr(types, pyname, getattr(module, pyname))
-        types.FIELDDEFS[name] = fielddefs[name]
+        setattr(typestore, pyname, getattr(module, pyname))
+        typestore.FIELDDEFS[name] = fielddefs[name]

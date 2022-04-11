@@ -9,12 +9,14 @@ from typing import TYPE_CHECKING, NamedTuple
 if TYPE_CHECKING:
     from typing import Any, Callable, Tuple
 
-    Bitcvt = Callable[[bytes, int, bytes, int], Tuple[int, int]]
-    BitcvtSize = Callable[[bytes, int, None, int], Tuple[int, int]]
+    from rosbags.typesys.register import Typestore
 
-    CDRDeser = Callable[[bytes, int, type], Tuple[Any, int]]
-    CDRSer = Callable[[bytes, int, object], int]
-    CDRSerSize = Callable[[int, object], int]
+    Bitcvt = Callable[[bytes, int, bytes, int, Typestore], Tuple[int, int]]
+    BitcvtSize = Callable[[bytes, int, None, int, Typestore], Tuple[int, int]]
+
+    CDRDeser = Callable[[bytes, int, type, Typestore], Tuple[Any, int]]
+    CDRSer = Callable[[bytes, int, object, Typestore], int]
+    CDRSerSize = Callable[[int, object, Typestore], int]
 
 
 class Descriptor(NamedTuple):

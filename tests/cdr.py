@@ -14,6 +14,7 @@ from numpy.typing import NDArray
 from rosbags.serde.messages import SerdeError, get_msgdef
 from rosbags.serde.typing import Msgdef
 from rosbags.serde.utils import SIZEMAP, Valtype
+from rosbags.typesys import types
 
 if TYPE_CHECKING:
     from typing import Any, Tuple
@@ -187,7 +188,7 @@ def deserialize(rawdata: bytes, typename: str) -> Msgdef:
     """
     _, little_endian = unpack_from('BB', rawdata, 0)
 
-    msgdef = get_msgdef(typename)
+    msgdef = get_msgdef(typename, types)
     obj, _ = deserialize_message(
         rawdata[4:],
         BASETYPEMAP_LE if little_endian else BASETYPEMAP_BE,
@@ -428,7 +429,7 @@ def serialize(
         Serialized bytes.
 
     """
-    msgdef = get_msgdef(typename)
+    msgdef = get_msgdef(typename, types)
     size = 4 + get_size(message, msgdef)
     rawdata = memoryview(bytearray(size))
 

@@ -12,7 +12,7 @@ import pytest
 
 from rosbags.serde import SerdeError, cdr_to_ros1, deserialize_cdr, ros1_to_cdr, serialize_cdr
 from rosbags.serde.messages import get_msgdef
-from rosbags.typesys import get_types_from_msg, register_types
+from rosbags.typesys import get_types_from_msg, register_types, types
 from rosbags.typesys.types import builtin_interfaces__msg__Time as Time
 from rosbags.typesys.types import geometry_msgs__msg__Polygon as Polygon
 from rosbags.typesys.types import sensor_msgs__msg__MagneticField as MagneticField
@@ -316,14 +316,14 @@ def test_custom_type() -> None:
     register_types(dict(get_types_from_msg(DYNAMIC_S_64, 'test_msgs/msg/dynamic_s_64')))
     register_types(dict(get_types_from_msg(CUSTOM, cname)))
 
-    static_64_64 = get_msgdef('test_msgs/msg/static_64_64').cls
-    static_64_16 = get_msgdef('test_msgs/msg/static_64_16').cls
-    static_16_64 = get_msgdef('test_msgs/msg/static_16_64').cls
-    dynamic_64_64 = get_msgdef('test_msgs/msg/dynamic_64_64').cls
-    dynamic_64_b_64 = get_msgdef('test_msgs/msg/dynamic_64_b_64').cls
-    dynamic_64_s = get_msgdef('test_msgs/msg/dynamic_64_s').cls
-    dynamic_s_64 = get_msgdef('test_msgs/msg/dynamic_s_64').cls
-    custom = get_msgdef('test_msgs/msg/custom').cls
+    static_64_64 = get_msgdef('test_msgs/msg/static_64_64', types).cls
+    static_64_16 = get_msgdef('test_msgs/msg/static_64_16', types).cls
+    static_16_64 = get_msgdef('test_msgs/msg/static_16_64', types).cls
+    dynamic_64_64 = get_msgdef('test_msgs/msg/dynamic_64_64', types).cls
+    dynamic_64_b_64 = get_msgdef('test_msgs/msg/dynamic_64_b_64', types).cls
+    dynamic_64_s = get_msgdef('test_msgs/msg/dynamic_64_s', types).cls
+    dynamic_s_64 = get_msgdef('test_msgs/msg/dynamic_s_64', types).cls
+    custom = get_msgdef('test_msgs/msg/custom', types).cls
 
     msg = custom(
         'str',
@@ -439,7 +439,7 @@ def test_padding_empty_sequence() -> None:
     """Test empty sequences do not add item padding."""
     register_types(dict(get_types_from_msg(SU64_B, 'test_msgs/msg/su64_b')))
 
-    su64_b = get_msgdef('test_msgs/msg/su64_b').cls
+    su64_b = get_msgdef('test_msgs/msg/su64_b', types).cls
     msg = su64_b(numpy.array([], dtype=numpy.uint64), True)
 
     cdr = serialize_cdr(msg, msg.__msgtype__)
@@ -458,7 +458,7 @@ def test_align_after_empty_sequence() -> None:
     """Test alignment after empty sequences."""
     register_types(dict(get_types_from_msg(SU64_U64, 'test_msgs/msg/su64_u64')))
 
-    su64_b = get_msgdef('test_msgs/msg/su64_u64').cls
+    su64_b = get_msgdef('test_msgs/msg/su64_u64', types).cls
     msg = su64_b(numpy.array([], dtype=numpy.uint64), 42)
 
     cdr = serialize_cdr(msg, msg.__msgtype__)

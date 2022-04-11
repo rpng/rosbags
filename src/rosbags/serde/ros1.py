@@ -52,7 +52,7 @@ def generate_ros1_to_cdr(
         'from rosbags.serde.messages import SerdeError, get_msgdef',
         'from rosbags.serde.primitives import pack_int32_le',
         'from rosbags.serde.primitives import unpack_int32_le',
-        f'def {funcname}(input, ipos, output, opos):',
+        f'def {funcname}(input, ipos, output, opos, typestore):',
     ]
 
     if typename == 'std_msgs/msg/Header':
@@ -62,8 +62,8 @@ def generate_ros1_to_cdr(
         _, desc = fcurr
 
         if desc.valtype == Valtype.MESSAGE:
-            lines.append(f'  func = get_msgdef("{desc.args.name}").{funcname}')
-            lines.append('  ipos, opos = func(input, ipos, output, opos)')
+            lines.append(f'  func = get_msgdef("{desc.args.name}", typestore).{funcname}')
+            lines.append('  ipos, opos = func(input, ipos, output, opos, typestore)')
             aligned = align_after(desc)
 
         elif desc.valtype == Valtype.BASE:
@@ -117,11 +117,11 @@ def generate_ros1_to_cdr(
                 anext_before = align(subdesc)
                 anext_after = align_after(subdesc)
 
-                lines.append(f'  func = get_msgdef("{subdesc.args.name}").{funcname}')
+                lines.append(f'  func = get_msgdef("{subdesc.args.name}", typestore).{funcname}')
                 for _ in range(length):
                     if anext_before > anext_after:
                         lines.append(f'  opos = (opos + {anext_before} - 1) & -{anext_before}')
-                    lines.append('  ipos, opos = func(input, ipos, output, opos)')
+                    lines.append('  ipos, opos = func(input, ipos, output, opos, typestore)')
                 aligned = anext_after
         else:
             assert desc.valtype == Valtype.SEQUENCE
@@ -163,10 +163,10 @@ def generate_ros1_to_cdr(
             else:
                 assert subdesc.valtype == Valtype.MESSAGE
                 anext_before = align(subdesc)
-                lines.append(f'  func = get_msgdef("{subdesc.args.name}").{funcname}')
+                lines.append(f'  func = get_msgdef("{subdesc.args.name}", typestore).{funcname}')
                 lines.append('  for _ in range(size):')
                 lines.append(f'    opos = (opos + {anext_before} - 1) & -{anext_before}')
-                lines.append('    ipos, opos = func(input, ipos, output, opos)')
+                lines.append('    ipos, opos = func(input, ipos, output, opos, typestore)')
                 aligned = align_after(subdesc)
 
             aligned = min([aligned, 4])
@@ -208,7 +208,7 @@ def generate_cdr_to_ros1(
         'from rosbags.serde.messages import SerdeError, get_msgdef',
         'from rosbags.serde.primitives import pack_int32_le',
         'from rosbags.serde.primitives import unpack_int32_le',
-        f'def {funcname}(input, ipos, output, opos):',
+        f'def {funcname}(input, ipos, output, opos, typestore):',
     ]
 
     if typename == 'std_msgs/msg/Header':
@@ -218,8 +218,8 @@ def generate_cdr_to_ros1(
         _, desc = fcurr
 
         if desc.valtype == Valtype.MESSAGE:
-            lines.append(f'  func = get_msgdef("{desc.args.name}").{funcname}')
-            lines.append('  ipos, opos = func(input, ipos, output, opos)')
+            lines.append(f'  func = get_msgdef("{desc.args.name}", typestore).{funcname}')
+            lines.append('  ipos, opos = func(input, ipos, output, opos, typestore)')
             aligned = align_after(desc)
 
         elif desc.valtype == Valtype.BASE:
@@ -273,11 +273,11 @@ def generate_cdr_to_ros1(
                 anext_before = align(subdesc)
                 anext_after = align_after(subdesc)
 
-                lines.append(f'  func = get_msgdef("{subdesc.args.name}").{funcname}')
+                lines.append(f'  func = get_msgdef("{subdesc.args.name}", typestore).{funcname}')
                 for _ in range(length):
                     if anext_before > anext_after:
                         lines.append(f'  ipos = (ipos + {anext_before} - 1) & -{anext_before}')
-                    lines.append('  ipos, opos = func(input, ipos, output, opos)')
+                    lines.append('  ipos, opos = func(input, ipos, output, opos, typestore)')
                 aligned = anext_after
         else:
             assert desc.valtype == Valtype.SEQUENCE
@@ -317,10 +317,10 @@ def generate_cdr_to_ros1(
             else:
                 assert subdesc.valtype == Valtype.MESSAGE
                 anext_before = align(subdesc)
-                lines.append(f'  func = get_msgdef("{subdesc.args.name}").{funcname}')
+                lines.append(f'  func = get_msgdef("{subdesc.args.name}", typestore).{funcname}')
                 lines.append('  for _ in range(size):')
                 lines.append(f'    ipos = (ipos + {anext_before} - 1) & -{anext_before}')
-                lines.append('    ipos, opos = func(input, ipos, output, opos)')
+                lines.append('    ipos, opos = func(input, ipos, output, opos, typestore)')
                 aligned = align_after(subdesc)
 
             aligned = min([aligned, 4])
