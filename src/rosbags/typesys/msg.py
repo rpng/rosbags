@@ -21,9 +21,16 @@ from .peg import Rule, Visitor, parse_grammar
 from .types import FIELDDEFS
 
 if TYPE_CHECKING:
-    from typing import Any
+    from typing import Optional, Tuple, TypeVar, Union
 
-    from .base import Fielddesc, Typesdict
+    from .base import Constdefs, Fielddefs, Fielddesc, Typesdict
+
+    T = TypeVar('T')
+
+    StringNode = Tuple[Nodetype, str]
+    ConstValue = Union[str, bool, int, float]
+    Msgdesc = Tuple[Tuple[StringNode, Tuple[str, str, int], str], ...]
+    LiteralMatch = Tuple[str, str]
 
 GRAMMAR_MSG = r"""
 specification
@@ -44,7 +51,7 @@ comment
   = r'#[^\n]*'
 
 const_dcl
-  = 'string' identifier r'=(?!={79}\n)' r'[^\n]+'
+  = 'string' identifier '=' r'(?!={79}\n)[^\n]+'
   / type_spec identifier '=' float_literal
   / type_spec identifier '=' integer_literal
   / type_spec identifier '=' boolean_literal
@@ -158,10 +165,7 @@ def normalize_fieldtype(typename: str, field: Fielddesc, names: list[str]) -> Fi
     """
     dct = {Path(name).name: name for name in names}
     ftype, args = field
-    if ftype == Nodetype.NAME:
-        name = args
-    else:
-        name = args[0][1]
+    name = args if ftype == Nodetype.NAME else args[0][1]
 
     assert isinstance(name, str)
     if name in VisitorMSG.BASETYPES:
@@ -220,52 +224,82 @@ class VisitorMSG(Visitor):
         'string',
     }
 
-    def visit_comment(self, children: Any) -> Any:
+    def visit_comment(self, _: str) -> None:
         """Process comment, suppress output."""
 
-    def visit_const_dcl(self, children: Any) -> Any:
+    def visit_const_dcl(
+        self,
+        children: tuple[StringNode, StringNode, LiteralMatch, ConstValue],
+    ) -> tuple[StringNode, tuple[str, str, ConstValue]]:
         """Process const declaration, suppress output."""
-        typ = children[0][1]
-        if typ == 'string':
+        value: Union[str, bool, int, float]
+        if (typ := children[0][1]) == 'string':
+            assert isinstance(children[3], str)
             value = children[3].strip()
         else:
             value = children[3]
-        return Nodetype.CONST, (typ, children[1][1], value)
+        return (Nodetype.CONST, ''), (typ, children[1][1], value)
 
-    def visit_specification(self, children: Any) -> Typesdict:
+    def visit_specification(
+        self,
+        children: tuple[tuple[str, Msgdesc], tuple[tuple[str, tuple[str, Msgdesc]], ...]],
+    ) -> Typesdict:
         """Process start symbol."""
         typelist = [children[0], *[x[1] for x in children[1]]]
         typedict = dict(typelist)
         names = list(typedict.keys())
-        for name, fields in typedict.items():
-            consts = [(x[1][1], x[1][0], x[1][2]) for x in fields if x[0] == Nodetype.CONST]
-            fields = [x for x in fields if x[0] != Nodetype.CONST]
-            fields = [(field[1][1], normalize_fieldtype(name, field[0], names)) for field in fields]
-            typedict[name] = consts, fields
-        return typedict
+        res: Typesdict = {}
+        for name, items in typedict.items():
+            consts: Constdefs = [
+                (x[1][1], x[1][0], x[1][2]) for x in items if x[0] == (Nodetype.CONST, '')
+            ]
+            fields: Fielddefs = [
+                (field[1][1], normalize_fieldtype(name, field[0], names))
+                for field in items
+                if field[0] != (Nodetype.CONST, '')
+            ]
+            res[name] = consts, fields
+        return res
 
-    def visit_msgdef(self, children: Any) -> Any:
+    def visit_msgdef(
+        self,
+        children: tuple[str, StringNode, tuple[Optional[T]]],
+    ) -> tuple[str, tuple[T, ...]]:
         """Process single message definition."""
         assert len(children) == 3
-        return normalize_msgtype(children[1][1]), [x for x in children[2] if x is not None]
+        return normalize_msgtype(children[1][1]), tuple(x for x in children[2] if x is not None)
 
-    def visit_msgsep(self, children: Any) -> Any:
+    def visit_msgsep(self, _: str) -> None:
         """Process message separator, suppress output."""
 
-    def visit_array_type_spec(self, children: Any) -> Any:
+    def visit_array_type_spec(
+        self,
+        children: tuple[StringNode, tuple[LiteralMatch, tuple[int, ...], LiteralMatch]],
+    ) -> tuple[Nodetype, tuple[StringNode, Optional[int]]]:
         """Process array type specifier."""
-        length = children[1][1]
-        if length:
+        if length := children[1][1]:
             return Nodetype.ARRAY, (children[0], length[0])
         return Nodetype.SEQUENCE, (children[0], None)
 
-    def visit_bounded_array_type_spec(self, children: Any) -> Any:
+    def visit_bounded_array_type_spec(
+        self,
+        children: list[StringNode],
+    ) -> tuple[Nodetype, tuple[StringNode, None]]:
         """Process bounded array type specifier."""
         return Nodetype.SEQUENCE, (children[0], None)
 
-    def visit_simple_type_spec(self, children: Any) -> Any:
+    def visit_simple_type_spec(
+        self,
+        children: Union[StringNode, tuple[LiteralMatch, LiteralMatch, int]],
+    ) -> StringNode:
         """Process simple type specifier."""
-        typespec = children[0][1] if ('LITERAL', '<=') in children else children[1]
+        if len(children) > 2:
+            assert (Rule.LIT, '<=') in children
+            assert isinstance(children[0], tuple)
+            typespec = children[0][1]
+        else:
+            assert isinstance(children[1], str)
+            typespec = children[1]
         dct = {
             'time': 'builtin_interfaces/msg/Time',
             'duration': 'builtin_interfaces/msg/Duration',
@@ -274,38 +308,41 @@ class VisitorMSG(Visitor):
         }
         return Nodetype.NAME, dct.get(typespec, typespec)
 
-    def visit_scoped_name(self, children: Any) -> Any:
+    def visit_scoped_name(
+        self,
+        children: Union[StringNode, tuple[StringNode, LiteralMatch, StringNode]],
+    ) -> StringNode:
         """Process scoped name."""
         if len(children) == 2:
-            return children
+            return children  # type: ignore
         assert len(children) == 3
-        return (Nodetype.NAME, '/'.join(x[1] for x in children if x[0] != Rule.LIT))
+        return (Nodetype.NAME, '/'.join(x[1] for x in children if x[0] != Rule.LIT))  # type: ignore
 
-    def visit_identifier(self, children: Any) -> Any:
+    def visit_identifier(self, children: str) -> StringNode:
         """Process identifier."""
         return (Nodetype.NAME, children)
 
-    def visit_boolean_literal(self, children: Any) -> Any:
+    def visit_boolean_literal(self, children: str) -> bool:
         """Process boolean literal."""
-        return children.lower() in ['true', '1']
+        return children.lower() in {'true', '1'}
 
-    def visit_float_literal(self, children: Any) -> Any:
+    def visit_float_literal(self, children: str) -> float:
         """Process float literal."""
         return float(children)
 
-    def visit_decimal_literal(self, children: Any) -> Any:
+    def visit_decimal_literal(self, children: str) -> int:
         """Process decimal integer literal."""
         return int(children)
 
-    def visit_octal_literal(self, children: Any) -> Any:
+    def visit_octal_literal(self, children: str) -> int:
         """Process octal integer literal."""
         return int(children, 8)
 
-    def visit_hexadecimal_literal(self, children: Any) -> Any:
+    def visit_hexadecimal_literal(self, children: str) -> int:
         """Process hexadecimal integer literal."""
         return int(children, 16)
 
-    def visit_string_literal(self, children: Any) -> Any:
+    def visit_string_literal(self, children: str) -> str:
         """Process integer literal."""
         return children[1]
 

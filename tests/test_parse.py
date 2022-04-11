@@ -140,6 +140,10 @@ module test_msgs {
         d4 array;
     };
   };
+
+  struct Bar {
+    int i;
+  };
 };
 """
 
@@ -272,6 +276,13 @@ def test_parse_idl() -> None:
     assert fields[4][1][0] == Nodetype.SEQUENCE
     assert fields[5][1][0] == Nodetype.SEQUENCE
     assert fields[6][1][0] == Nodetype.ARRAY
+
+    assert 'test_msgs/Bar' in ret
+    consts, fields = ret['test_msgs/Bar']
+    assert consts == []
+    assert len(fields) == 1
+    assert fields[0][0] == 'i'
+    assert fields[0][1][1] == 'int'
 
 
 def test_register_types() -> None:

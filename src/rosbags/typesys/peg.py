@@ -14,7 +14,10 @@ import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Optional
+    from typing import Any, Optional, Pattern, TypeVar, Union
+
+    Tree = Any
+    T = TypeVar('T')
 
 
 class Rule:
@@ -23,7 +26,12 @@ class Rule:
     LIT = 'LITERAL'
     WS = re.compile(r'\s+', re.M | re.S)
 
-    def __init__(self, value: Any, rules: dict[str, Rule], name: Optional[str] = None):
+    def __init__(
+        self,
+        value: Union[str, Pattern[str], Rule, list[Rule]],
+        rules: dict[str, Rule],
+        name: Optional[str] = None,
+    ):
         """Initialize.
 
         Args:
@@ -41,14 +49,9 @@ class Rule:
         match = self.WS.match(text, pos)
         return match.span()[1] if match else pos
 
-    def make_node(self, data: Any) -> Any:
+    def make_node(self, data: T) -> Union[T, dict[str, Union[str, T]]]:
         """Make node for parse tree."""
-        if self.name:
-            return {
-                'node': self.name,
-                'data': data,
-            }
-        return data
+        return {'node': self.name, 'data': data} if self.name else data
 
     def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
@@ -58,7 +61,7 @@ class Rule:
 class RuleLiteral(Rule):
     """Rule to match string literal."""
 
-    def __init__(self, value: Any, rules: dict[str, Rule], name: Optional[str] = None):
+    def __init__(self, value: str, rules: dict[str, Rule], name: Optional[str] = None):
         """Initialize.
 
         Args:
@@ -73,6 +76,7 @@ class RuleLiteral(Rule):
     def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
         value = self.value
+        assert isinstance(value, str)
         if text[pos:pos + len(value)] == value:
             npos = pos + len(value)
             npos = self.skip_ws(text, npos)
@@ -83,7 +87,9 @@ class RuleLiteral(Rule):
 class RuleRegex(Rule):
     """Rule to match regular expression."""
 
-    def __init__(self, value: Any, rules: dict[str, Rule], name: Optional[str] = None):
+    value: Pattern[str]
+
+    def __init__(self, value: str, rules: dict[str, Rule], name: Optional[str] = None):
         """Initialize.
 
         Args:
@@ -99,13 +105,15 @@ class RuleRegex(Rule):
         """Apply rule at position."""
         match = self.value.match(text, pos)
         if not match:
-            return -1, []
+            return -1, ()
         npos = self.skip_ws(text, match.span()[1])
         return npos, self.make_node(match.group())
 
 
 class RuleToken(Rule):
     """Rule to match token."""
+
+    value: str
 
     def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
@@ -119,17 +127,21 @@ class RuleToken(Rule):
 class RuleOneof(Rule):
     """Rule to match first matching subrule."""
 
+    value: list[Rule]
+
     def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
         for value in self.value:
             npos, data = value.parse(text, pos)
             if npos != -1:
                 return npos, self.make_node(data)
-        return -1, []
+        return -1, ()
 
 
 class RuleSequence(Rule):
     """Rule to match a sequence of subrules."""
+
+    value: list[Rule]
 
     def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
@@ -138,13 +150,15 @@ class RuleSequence(Rule):
         for value in self.value:
             npos, node = value.parse(text, npos)
             if npos == -1:
-                return -1, []
+                return -1, ()
             data.append(node)
-        return npos, self.make_node(data)
+        return npos, self.make_node(tuple(data))
 
 
 class RuleZeroPlus(Rule):
     """Rule to match zero or more occurences of subrule."""
+
+    value: Rule
 
     def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
@@ -153,7 +167,7 @@ class RuleZeroPlus(Rule):
         while True:
             npos, node = self.value.parse(text, lpos)
             if npos == -1:
-                return lpos, self.make_node(data)
+                return lpos, self.make_node(tuple(data))
             data.append(node)
             lpos = npos
 
@@ -161,17 +175,19 @@ class RuleZeroPlus(Rule):
 class RuleOnePlus(Rule):
     """Rule to match one or more occurences of subrule."""
 
+    value: Rule
+
     def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
         npos, node = self.value.parse(text, pos)
         if npos == -1:
-            return -1, []
+            return -1, ()
         data = [node]
         lpos = npos
         while True:
             npos, node = self.value.parse(text, lpos)
             if npos == -1:
-                return lpos, self.make_node(data)
+                return lpos, self.make_node(tuple(data))
             data.append(node)
             lpos = npos
 
@@ -179,12 +195,14 @@ class RuleOnePlus(Rule):
 class RuleZeroOne(Rule):
     """Rule to match zero or one occurence of subrule."""
 
+    value: Rule
+
     def parse(self, text: str, pos: int) -> tuple[int, Any]:
         """Apply rule at position."""
         npos, node = self.value.parse(text, pos)
         if npos == -1:
-            return pos, self.make_node([])
-        return npos, self.make_node([node])
+            return pos, self.make_node(())
+        return npos, self.make_node((node,))
 
 
 class Visitor:  # pylint: disable=too-few-public-methods
@@ -195,13 +213,16 @@ class Visitor:  # pylint: disable=too-few-public-methods
     def __init__(self) -> None:
         """Initialize."""
 
-    def visit(self, tree: Any) -> Any:
+    def visit(self, tree: Tree) -> Tree:
         """Visit all nodes in parse tree."""
-        if isinstance(tree, list):
-            return [self.visit(x) for x in tree]
+        if isinstance(tree, tuple):
+            return tuple(self.visit(x) for x in tree)
 
-        if not isinstance(tree, dict):
+        if isinstance(tree, str):
             return tree
+
+        assert isinstance(tree, dict), tree
+        assert list(tree.keys()) == ['node', 'data'], tree.keys()
 
         tree['data'] = self.visit(tree['data'])
         func = getattr(self, f'visit_{tree["node"]}', lambda x: x)
@@ -242,6 +263,7 @@ def parse_grammar(grammar: str) -> dict[str, Rule]:
         while items:
             tok = items.pop(0)
             if tok in ['*', '+', '?']:
+                assert isinstance(stack[-1], Rule)
                 stack[-1] = {
                     '*': RuleZeroPlus,
                     '+': RuleOnePlus,
