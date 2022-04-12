@@ -53,7 +53,7 @@ class RecordType(IntEnum):
 class Connection(NamedTuple):
     """Connection information."""
 
-    cid: int
+    id: int
     topic: str
     msgtype: str
     msgdef: str
@@ -436,7 +436,7 @@ class Reader:
                 count = reduce(
                     lambda x, y: x + y,
                     (
-                        y.connection_counts.get(x.cid, 0)
+                        y.connection_counts.get(x.id, 0)
                         for x in connections
                         for y in self.chunk_infos
                     ),
@@ -607,7 +607,7 @@ class Reader:
         if not connections:
             connections = self.connections.values()
 
-        indexes = [self.indexes[x.cid] for x in connections]
+        indexes = [self.indexes[x.id] for x in connections]
         for entry in heapq.merge(*indexes):
             if start and entry.time < start:
                 continue

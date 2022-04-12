@@ -106,13 +106,13 @@ def convert_1to2(src: Path, dst: Path) -> None:
             candidate = upgrade_connection(rconn)
             existing = next((x for x in writer.connections.values() if x == candidate), None)
             wconn = existing if existing else writer.add_connection(**asdict(candidate))
-            connmap[rconn.cid] = wconn
+            connmap[rconn.id] = wconn
             typs.update(get_types_from_msg(rconn.msgdef, rconn.msgtype))
         register_types(typs)
 
         for rconn, timestamp, data in reader.messages():
             data = ros1_to_cdr(data, rconn.msgtype)
-            writer.write(connmap[rconn.cid], timestamp, data)
+            writer.write(connmap[rconn.id], timestamp, data)
 
 
 def convert_2to1(src: Path, dst: Path) -> None:

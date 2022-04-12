@@ -261,7 +261,7 @@ class Writer:
         bio = self.chunks[-1].data
         self.write_connection(connection, bio)
 
-        self.connections[connection.cid] = connection
+        self.connections[connection.id] = connection
         return connection
 
     def write(self, connection: Connection, timestamp: int, data: bytes) -> None:
@@ -283,7 +283,7 @@ class Writer:
             raise WriterError(f'There is no connection {connection!r}.') from None
 
         chunk = self.chunks[-1]
-        chunk.connections[connection.cid].append((timestamp, chunk.data.tell()))
+        chunk.connections[connection.id].append((timestamp, chunk.data.tell()))
 
         if timestamp < chunk.start:
             chunk.start = timestamp
@@ -292,7 +292,7 @@ class Writer:
             chunk.end = timestamp
 
         header = Header()
-        header.set_uint32('conn', connection.cid)
+        header.set_uint32('conn', connection.id)
         header.set_time('time', timestamp)
 
         header.write(chunk.data, RecordType.MSGDATA)
@@ -305,7 +305,7 @@ class Writer:
     def write_connection(connection: Connection, bio: BinaryIO) -> None:
         """Write connection record."""
         header = Header()
-        header.set_uint32('conn', connection.cid)
+        header.set_uint32('conn', connection.id)
         header.set_string('topic', connection.topic)
         header.write(bio, RecordType.CONNECTION)
 

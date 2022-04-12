@@ -49,7 +49,7 @@ def test_add_connection(tmp_path: Path) -> None:
 
     with Writer(path) as writer:
         res = writer.add_connection('/foo', 'test_msgs/msg/Test', 'MESSAGE_DEFINITION', 'HASH')
-        assert res.cid == 0
+        assert res.id == 0
     data = path.read_bytes()
     assert data.count(b'MESSAGE_DEFINITION') == 2
     assert data.count(b'HASH') == 2
@@ -57,7 +57,7 @@ def test_add_connection(tmp_path: Path) -> None:
 
     with Writer(path) as writer:
         res = writer.add_connection('/foo', 'std_msgs/msg/Int8')
-        assert res.cid == 0
+        assert res.id == 0
     data = path.read_bytes()
     assert data.count(b'int8 data') == 2
     assert data.count(b'27ffa0c9c4b8fb8492252bcad9e5c57b') == 2
@@ -85,7 +85,7 @@ def test_add_connection(tmp_path: Path) -> None:
             'HASH',
             latching=1,
         )
-        assert (res1.cid, res2.cid, res3.cid) == (0, 1, 2)
+        assert (res1.id, res2.id, res3.id) == (0, 1, 2)
 
 
 def test_write_errors(tmp_path: Path) -> None:
