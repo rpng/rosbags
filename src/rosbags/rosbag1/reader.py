@@ -60,7 +60,6 @@ class Connection(NamedTuple):
     md5sum: str
     callerid: Optional[str]
     latching: Optional[int]
-    indexes: list[IndexData]
 
 
 class ChunkInfo(NamedTuple):
@@ -348,6 +347,8 @@ class Reader:
 
     """
 
+    # pylint: disable=too-many-instance-attributes
+
     def __init__(self, path: Union[str, Path]):
         """Initialize.
 
@@ -364,12 +365,13 @@ class Reader:
 
         self.bio: Optional[BinaryIO] = None
         self.connections: dict[int, Connection] = {}
+        self.indexes: dict[int, list[IndexData]]
         self.chunk_infos: list[ChunkInfo] = []
         self.chunks: dict[int, Chunk] = {}
         self.current_chunk: tuple[int, BinaryIO] = (-1, BytesIO())
         self.topics: dict[str, TopicInfo] = {}
 
-    def open(self) -> None:  # pylint: disable=too-many-branches,too-many-locals
+    def open(self) -> None:  # pylint: disable=too-many-locals
         """Open rosbag and read metadata."""
         try:
             self.bio = self.path.open('rb')
@@ -420,9 +422,10 @@ class Reader:
                     cid, index = self.read_index_data(chunk_info.pos)
                     indexes[cid].append(index)
 
-            for cid, connection in self.connections.items():
-                connection.indexes.extend(heapq.merge(*indexes[cid], key=lambda x: x.time))
-                assert connection.indexes
+            self.indexes = {
+                cid: list(heapq.merge(*x, key=lambda x: x.time)) for cid, x in indexes.items()
+            }
+            assert all(self.indexes[x] for x in self.connections)
 
             self.topics = {}
             for topic, group in groupby(
@@ -498,7 +501,6 @@ class Reader:
             md5sum,
             callerid,
             latching,
-            [],
         )
 
     def read_chunk_info(self) -> ChunkInfo:
@@ -605,7 +607,7 @@ class Reader:
         if not connections:
             connections = self.connections.values()
 
-        indexes = [x.indexes for x in connections]
+        indexes = [self.indexes[x.cid] for x in connections]
         for entry in heapq.merge(*indexes):
             if start and entry.time < start:
                 continue

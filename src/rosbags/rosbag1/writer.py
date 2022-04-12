@@ -251,7 +251,6 @@ class Writer:
             md5sum,
             callerid,
             latching,
-            [],
         )
 
         if any(x[1:] == connection[1:] for x in self.connections.values()):

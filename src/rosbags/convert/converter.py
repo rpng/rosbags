@@ -87,7 +87,6 @@ def downgrade_connection(rconn: Connection2) -> Connection1:
         md5sum,
         None,
         int('durability: 1' in rconn.offered_qos_profiles),
-        [],
     )
 
 
@@ -140,7 +139,7 @@ def convert_2to1(src: Path, dst: Path) -> None:
                 None,
             )
             # yapf: enable
-            connmap[rconn.id] = existing if existing else writer.add_connection(*candidate[1:-1])
+            connmap[rconn.id] = existing if existing else writer.add_connection(*candidate[1:])
 
         for rconn, timestamp, data in reader.messages():
             data = cdr_to_ros1(data, rconn.msgtype)
