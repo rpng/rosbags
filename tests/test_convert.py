@@ -125,16 +125,25 @@ def test_convert_1to2(tmp_path: Path) -> None:
         writerinst = writer.return_value.__enter__.return_value
 
         connections = [
-            Connection(1, '/topic', 'typ', 'def', '', -1, ConnectionExtRosbag1(None, False)),
-            Connection(2, '/topic', 'typ', 'def', '', -1, ConnectionExtRosbag1(None, True)),
-            Connection(3, '/other', 'typ', 'def', '', -1, ConnectionExtRosbag1(None, False)),
-            Connection(4, '/other', 'typ', 'def', '', -1, ConnectionExtRosbag1('caller', False)),
+            Connection(1, '/topic', 'typ', 'def', '', -1, ConnectionExtRosbag1(None, False), None),
+            Connection(2, '/topic', 'typ', 'def', '', -1, ConnectionExtRosbag1(None, True), None),
+            Connection(3, '/other', 'typ', 'def', '', -1, ConnectionExtRosbag1(None, False), None),
+            Connection(
+                4,
+                '/other',
+                'typ',
+                'def',
+                '',
+                -1,
+                ConnectionExtRosbag1('caller', False),
+                None,
+            ),
         ]
 
         wconnections = [
-            Connection(1, '/topic', 'typ', '', '', -1, ConnectionExtRosbag2('cdr', '')),
-            Connection(2, '/topic', 'typ', '', '', -1, ConnectionExtRosbag2('cdr', LATCH)),
-            Connection(3, '/other', 'typ', '', '', -1, ConnectionExtRosbag2('cdr', '')),
+            Connection(1, '/topic', 'typ', '', '', -1, ConnectionExtRosbag2('cdr', ''), None),
+            Connection(2, '/topic', 'typ', '', '', -1, ConnectionExtRosbag2('cdr', LATCH), None),
+            Connection(3, '/other', 'typ', '', '', -1, ConnectionExtRosbag2('cdr', ''), None),
         ]
 
         readerinst.connections = {
@@ -227,7 +236,16 @@ def test_convert_2to1(tmp_path: Path) -> None:
         writerinst = writer.return_value.__enter__.return_value
 
         connections = [
-            Connection(1, '/topic', 'std_msgs/msg/Bool', '', '', -1, ConnectionExtRosbag2('', '')),
+            Connection(
+                1,
+                '/topic',
+                'std_msgs/msg/Bool',
+                '',
+                '',
+                -1,
+                ConnectionExtRosbag2('', ''),
+                None,
+            ),
             Connection(
                 2,
                 '/topic',
@@ -236,9 +254,28 @@ def test_convert_2to1(tmp_path: Path) -> None:
                 '',
                 -1,
                 ConnectionExtRosbag2('', LATCH),
+                None,
             ),
-            Connection(3, '/other', 'std_msgs/msg/Bool', '', '', -1, ConnectionExtRosbag2('', '')),
-            Connection(4, '/other', 'std_msgs/msg/Bool', '', '', -1, ConnectionExtRosbag2('', '0')),
+            Connection(
+                3,
+                '/other',
+                'std_msgs/msg/Bool',
+                '',
+                '',
+                -1,
+                ConnectionExtRosbag2('', ''),
+                None,
+            ),
+            Connection(
+                4,
+                '/other',
+                'std_msgs/msg/Bool',
+                '',
+                '',
+                -1,
+                ConnectionExtRosbag2('', '0'),
+                None,
+            ),
         ]
 
         wconnections = [
@@ -250,6 +287,7 @@ def test_convert_2to1(tmp_path: Path) -> None:
                 '8b94c1b53db61fb6aed406028ad6332a',
                 -1,
                 ConnectionExtRosbag1(None, False),
+                None,
             ),
             Connection(
                 2,
@@ -259,6 +297,7 @@ def test_convert_2to1(tmp_path: Path) -> None:
                 '8b94c1b53db61fb6aed406028ad6332a',
                 -1,
                 ConnectionExtRosbag1(None, True),
+                None,
             ),
             Connection(
                 3,
@@ -268,6 +307,7 @@ def test_convert_2to1(tmp_path: Path) -> None:
                 '8b94c1b53db61fb6aed406028ad6332a',
                 -1,
                 ConnectionExtRosbag1(None, False),
+                None,
             ),
         ]
 

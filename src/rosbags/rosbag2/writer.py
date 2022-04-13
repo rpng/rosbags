@@ -162,6 +162,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
                 serialization_format=serialization_format,
                 offered_qos_profiles=offered_qos_profiles,
             ),
+            owner=self,
         )
         for conn in self.connections.values():
             if (

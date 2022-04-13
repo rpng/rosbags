@@ -408,7 +408,7 @@ class Reader:
                 self.connections[cid] = Connection(
                     *connection[0:5],
                     len(self.indexes[cid]),
-                    connection[6],
+                    *connection[6:],
                 )
         except ReaderError:
             self.close()
@@ -488,6 +488,7 @@ class Reader:
                 callerid,
                 latching,
             ),
+            self,
         )
 
     def read_chunk_info(self) -> ChunkInfo:

@@ -34,6 +34,7 @@ class Connection(NamedTuple):
     md5sum: str
     msgcount: int
     ext: Union[ConnectionExtRosbag1, ConnectionExtRosbag2]
+    owner: object
 
 
 class TopicInfo(NamedTuple):

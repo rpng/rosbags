@@ -255,6 +255,7 @@ class Writer:
                 callerid,
                 latching,
             ),
+            self,
         )
 
         if any(x[1:] == connection[1:] for x in self.connections.values()):

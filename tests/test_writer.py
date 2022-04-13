@@ -82,7 +82,16 @@ def test_failure_cases(tmp_path: Path) -> None:
     bag = Writer(tmp_path / 'write')
     with pytest.raises(WriterError, match='was not opened'):
         bag.write(
-            Connection(1, '/tf', 'tf_msgs/msg/tf2', '', '', 0, ConnectionExtRosbag2('cdr', '')),
+            Connection(
+                1,
+                '/tf',
+                'tf_msgs/msg/tf2',
+                '',
+                '',
+                0,
+                ConnectionExtRosbag2('cdr', ''),
+                None,
+            ),
             0,
             b'',
         )
@@ -95,6 +104,15 @@ def test_failure_cases(tmp_path: Path) -> None:
 
     bag = Writer(tmp_path / 'notopic')
     bag.open()
-    connection = Connection(1, '/tf', 'tf_msgs/msg/tf2', '', '', 0, ConnectionExtRosbag2('cdr', ''))
+    connection = Connection(
+        1,
+        '/tf',
+        'tf_msgs/msg/tf2',
+        '',
+        '',
+        0,
+        ConnectionExtRosbag2('cdr', ''),
+        None,
+    )
     with pytest.raises(WriterError, match='unknown connection'):
         bag.write(connection, 42, b'\x00')

@@ -148,6 +148,7 @@ class Reader:
                         serialization_format=x['topic_metadata']['serialization_format'],
                         offered_qos_profiles=x['topic_metadata'].get('offered_qos_profiles', ''),
                     ),
+                    owner=self,
                 ) for idx, x in enumerate(self.metadata['topics_with_message_count'])
             }
             noncdr = {

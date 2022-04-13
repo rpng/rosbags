@@ -68,6 +68,7 @@ def upgrade_connection(rconn: Connection) -> Connection:
             'cdr',
             LATCH if rconn.ext.latching else '',
         ),
+        None,
     )
 
 
@@ -94,6 +95,7 @@ def downgrade_connection(rconn: Connection) -> Connection:
             None,
             int('durability: 1' in rconn.ext.offered_qos_profiles),
         ),
+        None,
     )
 
 
