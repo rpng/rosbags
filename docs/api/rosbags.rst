@@ -5,6 +5,7 @@ Rosbags namespace
    :maxdepth: 4
 
    rosbags.convert
+   rosbags.highlevel
    rosbags.rosbag1
    rosbags.rosbag2
    rosbags.serde
