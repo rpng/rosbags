@@ -14,7 +14,7 @@ import zstandard
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
-from .connection import Connection
+from rosbags.interfaces import Connection, ConnectionExtRosbag2
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -139,15 +139,20 @@ class Reader:
             self.connections = {
                 idx + 1: Connection(
                     id=idx + 1,
-                    count=x['message_count'],
                     topic=x['topic_metadata']['name'],
                     msgtype=x['topic_metadata']['type'],
-                    serialization_format=x['topic_metadata']['serialization_format'],
-                    offered_qos_profiles=x['topic_metadata'].get('offered_qos_profiles', ''),
+                    msgdef='',
+                    md5sum='',
+                    msgcount=x['message_count'],
+                    ext=ConnectionExtRosbag2(
+                        serialization_format=x['topic_metadata']['serialization_format'],
+                        offered_qos_profiles=x['topic_metadata'].get('offered_qos_profiles', ''),
+                    ),
                 ) for idx, x in enumerate(self.metadata['topics_with_message_count'])
             }
             noncdr = {
-                fmt for x in self.connections.values() if (fmt := x.serialization_format) != 'cdr'
+                fmt for x in self.connections.values() if isinstance(x.ext, ConnectionExtRosbag2)
+                if (fmt := x.ext.serialization_format) != 'cdr'
             }
             if noncdr:
                 raise ReaderError(f'Serialization format {noncdr!r} is not supported.')

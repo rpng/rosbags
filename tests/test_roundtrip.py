@@ -36,7 +36,9 @@ def test_roundtrip(mode: Writer.CompressionMode, tmp_path: Path) -> None:
     with rbag:
         gen = rbag.messages()
         rconnection, _, raw = next(gen)
-        assert rconnection == wconnection
+        assert rconnection.topic == wconnection.topic
+        assert rconnection.msgtype == wconnection.msgtype
+        assert rconnection.ext == wconnection.ext
         msg = deserialize_cdr(raw, rconnection.msgtype)
         assert getattr(msg, 'data', None) == Foo.data
         with pytest.raises(StopIteration):

@@ -2,17 +2,24 @@
 # SPDX-License-Identifier: Apache-2.0
 """Rosbag1to2 converter tests."""
 
+from __future__ import annotations
+
 import sys
 from pathlib import Path
-from unittest.mock import Mock, call, patch
+from typing import TYPE_CHECKING
+from unittest.mock import call, patch
 
 import pytest
 
 from rosbags.convert import ConverterError, convert
 from rosbags.convert.__main__ import main
 from rosbags.convert.converter import LATCH
+from rosbags.interfaces import Connection, ConnectionExtRosbag1, ConnectionExtRosbag2
 from rosbags.rosbag1 import ReaderError
 from rosbags.rosbag2 import WriterError
+
+if TYPE_CHECKING:
+    from typing import Any
 
 
 def test_cliwrapper(tmp_path: Path) -> None:
@@ -114,71 +121,83 @@ def test_convert_1to2(tmp_path: Path) -> None:
          patch('rosbags.convert.converter.register_types') as register_types, \
          patch('rosbags.convert.converter.ros1_to_cdr') as ros1_to_cdr:
 
+        readerinst = reader.return_value.__enter__.return_value
+        writerinst = writer.return_value.__enter__.return_value
+
         connections = [
-            Mock(topic='/topic', msgtype='typ', latching=False),
-            Mock(topic='/topic', msgtype='typ', latching=True),
+            Connection(1, '/topic', 'typ', 'def', '', -1, ConnectionExtRosbag1(None, False)),
+            Connection(2, '/topic', 'typ', 'def', '', -1, ConnectionExtRosbag1(None, True)),
+            Connection(3, '/other', 'typ', 'def', '', -1, ConnectionExtRosbag1(None, False)),
+            Connection(4, '/other', 'typ', 'def', '', -1, ConnectionExtRosbag1('caller', False)),
         ]
 
         wconnections = [
-            Mock(topic='/topic', msgtype='typ'),
-            Mock(topic='/topic', msgtype='typ'),
+            Connection(1, '/topic', 'typ', '', '', -1, ConnectionExtRosbag2('cdr', '')),
+            Connection(2, '/topic', 'typ', '', '', -1, ConnectionExtRosbag2('cdr', LATCH)),
+            Connection(3, '/other', 'typ', '', '', -1, ConnectionExtRosbag2('cdr', '')),
         ]
 
-        reader.return_value.__enter__.return_value.connections = {
+        readerinst.connections = {
             1: connections[0],
             2: connections[1],
+            3: connections[2],
+            4: connections[3],
         }
 
-        reader.return_value.__enter__.return_value.messages.return_value = [
+        readerinst.messages.return_value = [
             (connections[0], 42, b'\x42'),
             (connections[1], 43, b'\x43'),
+            (connections[2], 44, b'\x44'),
+            (connections[3], 45, b'\x45'),
         ]
 
-        writer.return_value.__enter__.return_value.add_connection.side_effect = [
-            wconnections[0],
-            wconnections[1],
-        ]
+        writerinst.connections = {}
+
+        def add_connection(*_: Any) -> Connection:  # noqa: ANN401
+            """Mock for Writer.add_connection."""
+            writerinst.connections = {
+                conn.id: conn
+                for _, conn in zip(range(len(writerinst.connections) + 1), wconnections)
+            }
+            return wconnections[len(writerinst.connections) - 1]
+
+        writerinst.add_connection.side_effect = add_connection
 
         ros1_to_cdr.return_value = b'666'
 
         convert(Path('foo.bag'), None)
 
         reader.assert_called_with(Path('foo.bag'))
-        reader.return_value.__enter__.return_value.messages.assert_called_with()
+        readerinst.messages.assert_called_with()
 
         writer.assert_called_with(Path('foo'))
-        writer.return_value.__enter__.return_value.add_connection.assert_has_calls(
+        writerinst.add_connection.assert_has_calls(
             [
-                call(
-                    id=-1,
-                    count=0,
-                    topic='/topic',
-                    msgtype='typ',
-                    serialization_format='cdr',
-                    offered_qos_profiles='',
-                ),
-                call(
-                    id=-1,
-                    count=0,
-                    topic='/topic',
-                    msgtype='typ',
-                    serialization_format='cdr',
-                    offered_qos_profiles=LATCH,
-                ),
+                call('/topic', 'typ', 'cdr', ''),
+                call('/topic', 'typ', 'cdr', LATCH),
+                call('/other', 'typ', 'cdr', ''),
             ],
         )
-        writer.return_value.__enter__.return_value.write.assert_has_calls(
-            [call(wconnections[0], 42, b'666'),
-             call(wconnections[1], 43, b'666')],
+        writerinst.write.assert_has_calls(
+            [
+                call(wconnections[0], 42, b'666'),
+                call(wconnections[1], 43, b'666'),
+                call(wconnections[2], 44, b'666'),
+                call(wconnections[2], 45, b'666'),
+            ],
         )
 
         register_types.assert_called_with({'typ': 'def'})
-        ros1_to_cdr.assert_has_calls([call(b'\x42', 'typ'), call(b'\x43', 'typ')])
+        ros1_to_cdr.assert_has_calls(
+            [
+                call(b'\x42', 'typ'),
+                call(b'\x43', 'typ'),
+                call(b'\x44', 'typ'),
+                call(b'\x45', 'typ'),
+            ],
+        )
 
-        writer.return_value.__enter__.return_value.add_connection.side_effect = [
-            wconnections[0],
-            wconnections[1],
-        ]
+        writerinst.connections.clear()
         ros1_to_cdr.side_effect = KeyError('exc')
         with pytest.raises(ConverterError, match='Converting rosbag: .*exc'):
             convert(Path('foo.bag'), None)
@@ -204,30 +223,79 @@ def test_convert_2to1(tmp_path: Path) -> None:
          patch('rosbags.convert.converter.Writer1') as writer, \
          patch('rosbags.convert.converter.cdr_to_ros1') as cdr_to_ros1:
 
+        readerinst = reader.return_value.__enter__.return_value
+        writerinst = writer.return_value.__enter__.return_value
+
         connections = [
-            Mock(topic='/topic', msgtype='std_msgs/msg/Bool', offered_qos_profiles=''),
-            Mock(topic='/topic', msgtype='std_msgs/msg/Bool', offered_qos_profiles=LATCH),
+            Connection(1, '/topic', 'std_msgs/msg/Bool', '', '', -1, ConnectionExtRosbag2('', '')),
+            Connection(
+                2,
+                '/topic',
+                'std_msgs/msg/Bool',
+                '',
+                '',
+                -1,
+                ConnectionExtRosbag2('', LATCH),
+            ),
+            Connection(3, '/other', 'std_msgs/msg/Bool', '', '', -1, ConnectionExtRosbag2('', '')),
+            Connection(4, '/other', 'std_msgs/msg/Bool', '', '', -1, ConnectionExtRosbag2('', '0')),
         ]
 
         wconnections = [
-            Mock(topic='/topic', msgtype='typ'),
-            Mock(topic='/topic', msgtype='typ'),
+            Connection(
+                1,
+                '/topic',
+                'std_msgs/msg/Bool',
+                '',
+                '8b94c1b53db61fb6aed406028ad6332a',
+                -1,
+                ConnectionExtRosbag1(None, False),
+            ),
+            Connection(
+                2,
+                '/topic',
+                'std_msgs/msg/Bool',
+                '',
+                '8b94c1b53db61fb6aed406028ad6332a',
+                -1,
+                ConnectionExtRosbag1(None, True),
+            ),
+            Connection(
+                3,
+                '/other',
+                'std_msgs/msg/Bool',
+                '',
+                '8b94c1b53db61fb6aed406028ad6332a',
+                -1,
+                ConnectionExtRosbag1(None, False),
+            ),
         ]
 
-        reader.return_value.__enter__.return_value.connections = {
+        readerinst.connections = {
             1: connections[0],
             2: connections[1],
+            3: connections[2],
+            4: connections[3],
         }
 
-        reader.return_value.__enter__.return_value.messages.return_value = [
+        readerinst.messages.return_value = [
             (connections[0], 42, b'\x42'),
             (connections[1], 43, b'\x43'),
+            (connections[2], 44, b'\x44'),
+            (connections[3], 45, b'\x45'),
         ]
 
-        writer.return_value.__enter__.return_value.add_connection.side_effect = [
-            wconnections[0],
-            wconnections[1],
-        ]
+        writerinst.connections = {}
+
+        def add_connection(*_: Any) -> Connection:  # noqa: ANN401
+            """Mock for Writer.add_connection."""
+            writerinst.connections = {
+                conn.id: conn
+                for _, conn in zip(range(len(writerinst.connections) + 1), wconnections)
+            }
+            return wconnections[len(writerinst.connections) - 1]
+
+        writerinst.add_connection.side_effect = add_connection
 
         cdr_to_ros1.return_value = b'666'
 
@@ -255,24 +323,35 @@ def test_convert_2to1(tmp_path: Path) -> None:
                     None,
                     1,
                 ),
+                call(
+                    '/other',
+                    'std_msgs/msg/Bool',
+                    'bool data\n',
+                    '8b94c1b53db61fb6aed406028ad6332a',
+                    None,
+                    0,
+                ),
             ],
         )
         writer.return_value.__enter__.return_value.write.assert_has_calls(
-            [call(wconnections[0], 42, b'666'),
-             call(wconnections[1], 43, b'666')],
+            [
+                call(wconnections[0], 42, b'666'),
+                call(wconnections[1], 43, b'666'),
+                call(wconnections[2], 44, b'666'),
+                call(wconnections[2], 45, b'666'),
+            ],
         )
 
         cdr_to_ros1.assert_has_calls(
             [
                 call(b'\x42', 'std_msgs/msg/Bool'),
                 call(b'\x43', 'std_msgs/msg/Bool'),
+                call(b'\x44', 'std_msgs/msg/Bool'),
+                call(b'\x45', 'std_msgs/msg/Bool'),
             ],
         )
 
-        writer.return_value.__enter__.return_value.add_connection.side_effect = [
-            wconnections[0],
-            wconnections[1],
-        ]
+        writerinst.connections.clear()
         cdr_to_ros1.side_effect = KeyError('exc')
         with pytest.raises(ConverterError, match='Converting rosbag: .*exc'):
             convert(Path('foo'), None)

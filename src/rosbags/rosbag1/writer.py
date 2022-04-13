@@ -15,9 +15,10 @@ from typing import TYPE_CHECKING, Any, Dict
 
 from lz4.frame import compress as lz4_compress
 
+from rosbags.interfaces import Connection, ConnectionExtRosbag1
 from rosbags.typesys.msg import denormalize_msgtype, generate_msgdef
 
-from .reader import Connection, RecordType
+from .reader import RecordType
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -249,8 +250,11 @@ class Writer:
             denormalize_msgtype(msgtype),
             msgdef,
             md5sum,
-            callerid,
-            latching,
+            -1,
+            ConnectionExtRosbag1(
+                callerid,
+                latching,
+            ),
         )
 
         if any(x[1:] == connection[1:] for x in self.connections.values()):
@@ -314,10 +318,11 @@ class Writer:
         header.set_string('type', connection.msgtype)
         header.set_string('md5sum', connection.md5sum)
         header.set_string('message_definition', connection.msgdef)
-        if connection.callerid is not None:
-            header.set_string('callerid', connection.callerid)
-        if connection.latching is not None:
-            header.set_string('latching', str(connection.latching))
+        assert isinstance(connection.ext, ConnectionExtRosbag1)
+        if connection.ext.callerid is not None:
+            header.set_string('callerid', connection.ext.callerid)
+        if connection.ext.latching is not None:
+            header.set_string('latching', str(connection.ext.latching))
         header.write(bio)
 
     def write_chunk(self, chunk: WriteChunk) -> None:

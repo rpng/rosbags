@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Any, Dict, NamedTuple
 
 from lz4.frame import decompress as lz4_decompress
 
+from rosbags.interfaces import Connection, ConnectionExtRosbag1
 from rosbags.typesys.msg import normalize_msgtype
 
 if TYPE_CHECKING:
@@ -48,18 +49,6 @@ class RecordType(IntEnum):
     CHUNK = 5
     CHUNK_INFO = 6
     CONNECTION = 7
-
-
-class Connection(NamedTuple):
-    """Connection information."""
-
-    id: int
-    topic: str
-    msgtype: str
-    msgdef: str
-    md5sum: str
-    callerid: Optional[str]
-    latching: Optional[int]
 
 
 class ChunkInfo(NamedTuple):
@@ -427,6 +416,13 @@ class Reader:
             }
             assert all(self.indexes[x] for x in self.connections)
 
+            for cid, connection in self.connections.items():
+                self.connections[cid] = Connection(
+                    *connection[0:5],
+                    len(self.indexes[cid]),
+                    connection[6],
+                )
+
             self.topics = {}
             for topic, group in groupby(
                 sorted(self.connections.values(), key=lambda x: x.topic),
@@ -499,8 +495,11 @@ class Reader:
             normalize_msgtype(typ),
             msgdef,
             md5sum,
-            callerid,
-            latching,
+            0,
+            ConnectionExtRosbag1(
+                callerid,
+                latching,
+            ),
         )
 
     def read_chunk_info(self) -> ChunkInfo:

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
+from rosbags.interfaces import ConnectionExtRosbag2
 from rosbags.rosbag2 import Reader, Writer
 
 if TYPE_CHECKING:
@@ -24,11 +25,12 @@ def remove_topic(src: Path, dst: Path, topic: str) -> None:
         for conn in reader.connections.values():
             if conn.topic == topic:
                 continue
+            ext = cast(ConnectionExtRosbag2, conn.ext)
             conn_map[conn.id] = writer.add_connection(
                 conn.topic,
                 conn.msgtype,
-                conn.serialization_format,
-                conn.offered_qos_profiles,
+                ext.serialization_format,
+                ext.offered_qos_profiles,
             )
 
         rconns = [reader.connections[x] for x in conn_map]

@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import zstandard
 from ruamel.yaml import YAML
 
-from .connection import Connection
+from rosbags.interfaces import Connection, ConnectionExtRosbag2
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -82,6 +82,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         self.compression_format = ''
         self.compressor: Optional[zstandard.ZstdCompressor] = None
         self.connections: dict[int, Connection] = {}
+        self.counts: dict[int, int] = {}
         self.conn: Optional[sqlite3.Connection] = None
         self.cursor: Optional[sqlite3.Cursor] = None
 
@@ -152,16 +153,25 @@ class Writer:  # pylint: disable=too-many-instance-attributes
 
         connection = Connection(
             id=len(self.connections.values()) + 1,
-            count=0,
             topic=topic,
             msgtype=msgtype,
-            serialization_format=serialization_format,
-            offered_qos_profiles=offered_qos_profiles,
+            msgdef='',
+            md5sum='',
+            msgcount=0,
+            ext=ConnectionExtRosbag2(
+                serialization_format=serialization_format,
+                offered_qos_profiles=offered_qos_profiles,
+            ),
         )
-        if connection in self.connections.values():
-            raise WriterError(f'Connection can only be added once: {connection!r}.')
+        for conn in self.connections.values():
+            if (
+                conn.topic == connection.topic and conn.msgtype == connection.msgtype and
+                conn.ext == connection.ext
+            ):
+                raise WriterError(f'Connection can only be added once: {connection!r}.')
 
         self.connections[connection.id] = connection
+        self.counts[connection.id] = 0
         meta = (connection.id, topic, msgtype, serialization_format, offered_qos_profiles)
         self.cursor.execute('INSERT INTO topics VALUES(?, ?, ?, ?, ?)', meta)
         return connection
@@ -191,7 +201,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
             'INSERT INTO messages (topic_id, timestamp, data) VALUES(?, ?, ?)',
             (connection.id, timestamp, data),
         )
-        connection.count += 1
+        self.counts[connection.id] += 1
 
     def close(self) -> None:
         """Close rosbag2 after writing.
@@ -237,11 +247,11 @@ class Writer:  # pylint: disable=too-many-instance-attributes
                         'topic_metadata': {
                             'name': x.topic,
                             'type': x.msgtype,
-                            'serialization_format': x.serialization_format,
-                            'offered_qos_profiles': x.offered_qos_profiles,
+                            'serialization_format': x.ext.serialization_format,
+                            'offered_qos_profiles': x.ext.offered_qos_profiles,
                         },
-                        'message_count': x.count,
-                    } for x in self.connections.values()
+                        'message_count': self.counts[x.id],
+                    } for x in self.connections.values() if isinstance(x.ext, ConnectionExtRosbag2)
                 ],
                 'compression_format': self.compression_format,
                 'compression_mode': self.compression_mode,

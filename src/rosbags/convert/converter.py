@@ -4,19 +4,17 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
 from typing import TYPE_CHECKING
 
+from rosbags.interfaces import Connection, ConnectionExtRosbag1, ConnectionExtRosbag2
 from rosbags.rosbag1 import Reader as Reader1
 from rosbags.rosbag1 import ReaderError as ReaderError1
 from rosbags.rosbag1 import Writer as Writer1
 from rosbags.rosbag1 import WriterError as WriterError1
-from rosbags.rosbag1.reader import Connection as Connection1
 from rosbags.rosbag2 import Reader as Reader2
 from rosbags.rosbag2 import ReaderError as ReaderError2
 from rosbags.rosbag2 import Writer as Writer2
 from rosbags.rosbag2 import WriterError as WriterError2
-from rosbags.rosbag2.connection import Connection as Connection2
 from rosbags.serde import cdr_to_ros1, ros1_to_cdr
 from rosbags.typesys import get_types_from_msg, register_types
 from rosbags.typesys.msg import generate_msgdef
@@ -48,7 +46,7 @@ class ConverterError(Exception):
     """Converter Error."""
 
 
-def upgrade_connection(rconn: Connection1) -> Connection2:
+def upgrade_connection(rconn: Connection) -> Connection:
     """Convert rosbag1 connection to rosbag2 connection.
 
     Args:
@@ -58,17 +56,22 @@ def upgrade_connection(rconn: Connection1) -> Connection2:
         Rosbag2 connection.
 
     """
-    return Connection2(
-        -1,
-        0,
+    assert isinstance(rconn.ext, ConnectionExtRosbag1)
+    return Connection(
+        rconn.id,
         rconn.topic,
         rconn.msgtype,
-        'cdr',
-        LATCH if rconn.latching else '',
+        '',
+        '',
+        0,
+        ConnectionExtRosbag2(
+            'cdr',
+            LATCH if rconn.ext.latching else '',
+        ),
     )
 
 
-def downgrade_connection(rconn: Connection2) -> Connection1:
+def downgrade_connection(rconn: Connection) -> Connection:
     """Convert rosbag2 connection to rosbag1 connection.
 
     Args:
@@ -78,15 +81,19 @@ def downgrade_connection(rconn: Connection2) -> Connection1:
         Rosbag1 connection.
 
     """
+    assert isinstance(rconn.ext, ConnectionExtRosbag2)
     msgdef, md5sum = generate_msgdef(rconn.msgtype)
-    return Connection1(
-        -1,
+    return Connection(
+        rconn.id,
         rconn.topic,
         rconn.msgtype,
         msgdef,
         md5sum,
-        None,
-        int('durability: 1' in rconn.offered_qos_profiles),
+        -1,
+        ConnectionExtRosbag1(
+            None,
+            int('durability: 1' in rconn.ext.offered_qos_profiles),
+        ),
     )
 
 
@@ -100,13 +107,26 @@ def convert_1to2(src: Path, dst: Path) -> None:
     """
     with Reader1(src) as reader, Writer2(dst) as writer:
         typs: dict[str, Any] = {}
-        connmap: dict[int, Connection2] = {}
+        connmap: dict[int, Connection] = {}
 
         for rconn in reader.connections.values():
             candidate = upgrade_connection(rconn)
-            existing = next((x for x in writer.connections.values() if x == candidate), None)
-            wconn = existing if existing else writer.add_connection(**asdict(candidate))
-            connmap[rconn.id] = wconn
+            assert isinstance(candidate.ext, ConnectionExtRosbag2)
+            for conn in writer.connections.values():
+                assert isinstance(conn.ext, ConnectionExtRosbag2)
+                if (
+                    conn.topic == candidate.topic and conn.msgtype == candidate.msgtype and
+                    conn.ext == candidate.ext
+                ):
+                    break
+            else:
+                conn = writer.add_connection(
+                    candidate.topic,
+                    candidate.msgtype,
+                    candidate.ext.serialization_format,
+                    candidate.ext.offered_qos_profiles,
+                )
+            connmap[rconn.id] = conn
             typs.update(get_types_from_msg(rconn.msgdef, rconn.msgtype))
         register_types(typs)
 
@@ -124,22 +144,27 @@ def convert_2to1(src: Path, dst: Path) -> None:
 
     """
     with Reader2(src) as reader, Writer1(dst) as writer:
-        connmap: dict[int, Connection1] = {}
+        connmap: dict[int, Connection] = {}
         for rconn in reader.connections.values():
             candidate = downgrade_connection(rconn)
-            # yapf: disable
-            existing = next(
-                (
-                    x
-                    for x in writer.connections.values()
-                    if x.topic == candidate.topic
-                    if x.md5sum == candidate.md5sum
-                    if x.latching == candidate.latching
-                ),
-                None,
-            )
-            # yapf: enable
-            connmap[rconn.id] = existing if existing else writer.add_connection(*candidate[1:])
+            assert isinstance(candidate.ext, ConnectionExtRosbag1)
+            for conn in writer.connections.values():
+                assert isinstance(conn.ext, ConnectionExtRosbag1)
+                if (
+                    conn.topic == candidate.topic and conn.md5sum == candidate.md5sum and
+                    conn.ext.latching == candidate.ext.latching
+                ):
+                    break
+            else:
+                conn = writer.add_connection(
+                    candidate.topic,
+                    candidate.msgtype,
+                    candidate.msgdef,
+                    candidate.md5sum,
+                    candidate.ext.callerid,
+                    candidate.ext.latching,
+                )
+            connmap[rconn.id] = conn
 
         for rconn, timestamp, data in reader.messages():
             data = cdr_to_ros1(data, rconn.msgtype)

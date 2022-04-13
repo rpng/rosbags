@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from rosbags.interfaces import Connection, ConnectionExtRosbag2
 from rosbags.rosbag2 import Writer, WriterError
-from rosbags.rosbag2.connection import Connection
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -81,7 +81,11 @@ def test_failure_cases(tmp_path: Path) -> None:
 
     bag = Writer(tmp_path / 'write')
     with pytest.raises(WriterError, match='was not opened'):
-        bag.write(Connection(1, 0, '/tf', 'tf_msgs/msg/tf2', 'cdr', ''), 0, b'')
+        bag.write(
+            Connection(1, '/tf', 'tf_msgs/msg/tf2', '', '', 0, ConnectionExtRosbag2('cdr', '')),
+            0,
+            b'',
+        )
 
     bag = Writer(tmp_path / 'topic')
     bag.open()
@@ -91,6 +95,6 @@ def test_failure_cases(tmp_path: Path) -> None:
 
     bag = Writer(tmp_path / 'notopic')
     bag.open()
-    connection = Connection(1, 0, '/tf', 'tf_msgs/msg/tf2', 'cdr', '')
+    connection = Connection(1, '/tf', 'tf_msgs/msg/tf2', '', '', 0, ConnectionExtRosbag2('cdr', ''))
     with pytest.raises(WriterError, match='unknown connection'):
         bag.write(connection, 42, b'\x00')
