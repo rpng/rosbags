@@ -34,3 +34,12 @@ class Connection(NamedTuple):
     md5sum: str
     msgcount: int
     ext: Union[ConnectionExtRosbag1, ConnectionExtRosbag2]
+
+
+class TopicInfo(NamedTuple):
+    """Topic information."""
+
+    msgtype: Optional[str]
+    msgdef: Optional[str]
+    msgcount: int
+    connections: list[Connection]

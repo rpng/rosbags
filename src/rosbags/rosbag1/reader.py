@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any, Dict, NamedTuple
 
 from lz4.frame import decompress as lz4_decompress
 
-from rosbags.interfaces import Connection, ConnectionExtRosbag1
+from rosbags.interfaces import Connection, ConnectionExtRosbag1, TopicInfo
 from rosbags.typesys.msg import normalize_msgtype
 
 if TYPE_CHECKING:
@@ -66,15 +66,6 @@ class Chunk(NamedTuple):
     datasize: int
     datapos: int
     decompressor: Callable[[bytes], bytes]
-
-
-class TopicInfo(NamedTuple):
-    """Topic information."""
-
-    conncount: int
-    msgcount: int
-    msgdef: str
-    msgtype: str
 
 
 class IndexData(NamedTuple):
@@ -336,8 +327,6 @@ class Reader:
 
     """
 
-    # pylint: disable=too-many-instance-attributes
-
     def __init__(self, path: Union[str, Path]):
         """Initialize.
 
@@ -358,7 +347,6 @@ class Reader:
         self.chunk_infos: list[ChunkInfo] = []
         self.chunks: dict[int, Chunk] = {}
         self.current_chunk: tuple[int, BinaryIO] = (-1, BytesIO())
-        self.topics: dict[str, TopicInfo] = {}
 
     def open(self) -> None:  # pylint: disable=too-many-locals
         """Open rosbag and read metadata."""
@@ -422,28 +410,6 @@ class Reader:
                     len(self.indexes[cid]),
                     connection[6],
                 )
-
-            self.topics = {}
-            for topic, group in groupby(
-                sorted(self.connections.values(), key=lambda x: x.topic),
-                key=lambda x: x.topic,
-            ):
-                connections = list(group)
-                count = reduce(
-                    lambda x, y: x + y,
-                    (
-                        y.connection_counts.get(x.id, 0)
-                        for x in connections
-                        for y in self.chunk_infos
-                    ),
-                )
-
-                self.topics[topic] = TopicInfo(
-                    len(connections),
-                    count,
-                    connections[0].msgdef,
-                    connections[0].msgtype,
-                )
         except ReaderError:
             self.close()
             raise
@@ -473,6 +439,28 @@ class Reader:
     def message_count(self) -> int:
         """Total message count."""
         return reduce(lambda x, y: x + y, (x.msgcount for x in self.topics.values()), 0)
+
+    @property
+    def topics(self) -> dict[str, TopicInfo]:
+        """Topic information."""
+        topics = {}
+        for topic, group in groupby(
+            sorted(self.connections.values(), key=lambda x: x.topic),
+            key=lambda x: x.topic,
+        ):
+            connections = list(group)
+            msgcount = reduce(
+                lambda x, y: x + y,
+                (y.connection_counts.get(x.id, 0) for x in connections for y in self.chunk_infos),
+            )
+
+            topics[topic] = TopicInfo(
+                msgtypes.pop() if len(msgtypes := {x.msgtype for x in connections}) == 1 else None,
+                msgdefs.pop() if len(msgdefs := {x.msgdef for x in connections}) == 1 else None,
+                msgcount,
+                connections,
+            )
+        return topics
 
     def read_connection(self) -> tuple[int, Connection]:
         """Read connection record from current position."""

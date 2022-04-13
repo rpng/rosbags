@@ -14,7 +14,7 @@ import zstandard
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
-from rosbags.interfaces import Connection, ConnectionExtRosbag2
+from rosbags.interfaces import Connection, ConnectionExtRosbag2, TopicInfo
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -206,13 +206,12 @@ class Reader:
         return mode if mode != 'none' else None
 
     @property
-    def topics(self) -> dict[str, Connection]:
-        """Topic information.
-
-        For the moment this a dictionary mapping topic names to connections.
-
-        """
-        return {x.topic: x for x in self.connections.values()}
+    def topics(self) -> dict[str, TopicInfo]:
+        """Topic information."""
+        return {
+            x.topic: TopicInfo(x.msgtype, x.msgdef, x.msgcount, [x])
+            for x in self.connections.values()
+        }
 
     def messages(  # pylint: disable=too-many-locals
         self,
