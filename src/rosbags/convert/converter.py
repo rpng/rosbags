@@ -111,10 +111,10 @@ def convert_1to2(src: Path, dst: Path) -> None:
         typs: dict[str, Any] = {}
         connmap: dict[int, Connection] = {}
 
-        for rconn in reader.connections.values():
+        for rconn in reader.connections:
             candidate = upgrade_connection(rconn)
             assert isinstance(candidate.ext, ConnectionExtRosbag2)
-            for conn in writer.connections.values():
+            for conn in writer.connections:
                 assert isinstance(conn.ext, ConnectionExtRosbag2)
                 if (
                     conn.topic == candidate.topic and conn.msgtype == candidate.msgtype and
@@ -147,10 +147,10 @@ def convert_2to1(src: Path, dst: Path) -> None:
     """
     with Reader2(src) as reader, Writer1(dst) as writer:
         connmap: dict[int, Connection] = {}
-        for rconn in reader.connections.values():
+        for rconn in reader.connections:
             candidate = downgrade_connection(rconn)
             assert isinstance(candidate.ext, ConnectionExtRosbag1)
-            for conn in writer.connections.values():
+            for conn in writer.connections:
                 assert isinstance(conn.ext, ConnectionExtRosbag1)
                 if (
                     conn.topic == candidate.topic and conn.md5sum == candidate.md5sum and

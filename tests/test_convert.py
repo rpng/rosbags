@@ -146,12 +146,12 @@ def test_convert_1to2(tmp_path: Path) -> None:
             Connection(3, '/other', 'typ', '', '', -1, ConnectionExtRosbag2('cdr', ''), None),
         ]
 
-        readerinst.connections = {
-            1: connections[0],
-            2: connections[1],
-            3: connections[2],
-            4: connections[3],
-        }
+        readerinst.connections = [
+            connections[0],
+            connections[1],
+            connections[2],
+            connections[3],
+        ]
 
         readerinst.messages.return_value = [
             (connections[0], 42, b'\x42'),
@@ -160,14 +160,13 @@ def test_convert_1to2(tmp_path: Path) -> None:
             (connections[3], 45, b'\x45'),
         ]
 
-        writerinst.connections = {}
+        writerinst.connections = []
 
         def add_connection(*_: Any) -> Connection:  # noqa: ANN401
             """Mock for Writer.add_connection."""
-            writerinst.connections = {
-                conn.id: conn
-                for _, conn in zip(range(len(writerinst.connections) + 1), wconnections)
-            }
+            writerinst.connections = [
+                conn for _, conn in zip(range(len(writerinst.connections) + 1), wconnections)
+            ]
             return wconnections[len(writerinst.connections) - 1]
 
         writerinst.add_connection.side_effect = add_connection
@@ -311,12 +310,12 @@ def test_convert_2to1(tmp_path: Path) -> None:
             ),
         ]
 
-        readerinst.connections = {
-            1: connections[0],
-            2: connections[1],
-            3: connections[2],
-            4: connections[3],
-        }
+        readerinst.connections = [
+            connections[0],
+            connections[1],
+            connections[2],
+            connections[3],
+        ]
 
         readerinst.messages.return_value = [
             (connections[0], 42, b'\x42'),
@@ -325,14 +324,13 @@ def test_convert_2to1(tmp_path: Path) -> None:
             (connections[3], 45, b'\x45'),
         ]
 
-        writerinst.connections = {}
+        writerinst.connections = []
 
         def add_connection(*_: Any) -> Connection:  # noqa: ANN401
             """Mock for Writer.add_connection."""
-            writerinst.connections = {
-                conn.id: conn
-                for _, conn in zip(range(len(writerinst.connections) + 1), wconnections)
-            }
+            writerinst.connections = [
+                conn for _, conn in zip(range(len(writerinst.connections) + 1), wconnections)
+            ]
             return wconnections[len(writerinst.connections) - 1]
 
         writerinst.add_connection.side_effect = add_connection

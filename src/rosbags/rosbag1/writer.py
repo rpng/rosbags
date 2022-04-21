@@ -159,7 +159,7 @@ class Writer:
         self.bio: Optional[BinaryIO] = None
         self.compressor: Callable[[bytes], bytes] = lambda x: x
         self.compression_format = 'none'
-        self.connections: dict[int, Connection] = {}
+        self.connections: list[Connection] = []
         self.chunks: list[WriteChunk] = [
             WriteChunk(BytesIO(), -1, 2**64, 0, defaultdict(list)),
         ]
@@ -258,7 +258,7 @@ class Writer:
             self,
         )
 
-        if any(x[1:] == connection[1:] for x in self.connections.values()):
+        if any(x[1:] == connection[1:] for x in self.connections):
             raise WriterError(
                 f'Connections can only be added once with same arguments: {connection!r}.',
             )
@@ -266,7 +266,7 @@ class Writer:
         bio = self.chunks[-1].data
         self.write_connection(connection, bio)
 
-        self.connections[connection.id] = connection
+        self.connections.append(connection)
         return connection
 
     def write(self, connection: Connection, timestamp: int, data: bytes) -> None:
@@ -284,7 +284,7 @@ class Writer:
         if not self.bio:
             raise WriterError('Bag was not opened.')
 
-        if connection not in self.connections.values():
+        if connection not in self.connections:
             raise WriterError(f'There is no connection {connection!r}.') from None
 
         chunk = self.chunks[-1]
@@ -367,7 +367,7 @@ class Writer:
 
         index_pos = self.bio.tell()
 
-        for connection in self.connections.values():
+        for connection in self.connections:
             self.write_connection(connection, self.bio)
 
         for chunk in self.chunks:

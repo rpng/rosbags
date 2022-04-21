@@ -81,7 +81,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         self.compression_mode = ''
         self.compression_format = ''
         self.compressor: Optional[zstandard.ZstdCompressor] = None
-        self.connections: dict[int, Connection] = {}
+        self.connections: list[Connection] = []
         self.counts: dict[int, int] = {}
         self.conn: Optional[sqlite3.Connection] = None
         self.cursor: Optional[sqlite3.Cursor] = None
@@ -152,7 +152,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
             raise WriterError('Bag was not opened.')
 
         connection = Connection(
-            id=len(self.connections.values()) + 1,
+            id=len(self.connections) + 1,
             topic=topic,
             msgtype=msgtype,
             msgdef='',
@@ -164,14 +164,14 @@ class Writer:  # pylint: disable=too-many-instance-attributes
             ),
             owner=self,
         )
-        for conn in self.connections.values():
+        for conn in self.connections:
             if (
                 conn.topic == connection.topic and conn.msgtype == connection.msgtype and
                 conn.ext == connection.ext
             ):
                 raise WriterError(f'Connection can only be added once: {connection!r}.')
 
-        self.connections[connection.id] = connection
+        self.connections.append(connection)
         self.counts[connection.id] = 0
         meta = (connection.id, topic, msgtype, serialization_format, offered_qos_profiles)
         self.cursor.execute('INSERT INTO topics VALUES(?, ?, ?, ?, ?)', meta)
@@ -191,7 +191,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
         """
         if not self.cursor:
             raise WriterError('Bag was not opened.')
-        if connection not in self.connections.values():
+        if connection not in self.connections:
             raise WriterError(f'Tried to write to unknown connection {connection!r}.')
 
         if self.compression_mode == 'message':
@@ -252,7 +252,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
                             'offered_qos_profiles': x.ext.offered_qos_profiles,
                         },
                         'message_count': self.counts[x.id],
-                    } for x in self.connections.values() if isinstance(x.ext, ConnectionExtRosbag2)
+                    } for x in self.connections if isinstance(x.ext, ConnectionExtRosbag2)
                 ],
                 'compression_format': self.compression_format,
                 'compression_mode': self.compression_mode,

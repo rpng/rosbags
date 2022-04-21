@@ -126,7 +126,7 @@ def test_reader(bag: Path) -> None:
         assert reader.message_count == 4
         if reader.compression_mode:
             assert reader.compression_format == 'zstd'
-        assert [*reader.connections.keys()] == [1, 2, 3]
+        assert [x.id for x in reader.connections] == [1, 2, 3]
         assert [*reader.topics.keys()] == ['/poly', '/magn', '/joint']
         gen = reader.messages()
 
@@ -154,7 +154,7 @@ def test_reader(bag: Path) -> None:
 def test_message_filters(bag: Path) -> None:
     """Test reader filters messages."""
     with Reader(bag) as reader:
-        magn_connections = [x for x in reader.connections.values() if x.topic == '/magn']
+        magn_connections = [x for x in reader.connections if x.topic == '/magn']
         gen = reader.messages(connections=magn_connections)
         connection, _, _ = next(gen)
         assert connection.topic == '/magn'

@@ -23,7 +23,7 @@ def offset_timestamps(src: Path, dst: Path, offset: int) -> None:
     """
     with Reader(src) as reader, Writer(dst) as writer:
         conn_map = {}
-        for conn in reader.connections.values():
+        for conn in reader.connections:
             ext = cast(ConnectionExtRosbag2, conn.ext)
             conn_map[conn.id] = writer.add_connection(
                 conn.topic,

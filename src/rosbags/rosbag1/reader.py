@@ -342,7 +342,7 @@ class Reader:
             raise ReaderError(f'File {str(self.path)!r} does not exist.')
 
         self.bio: Optional[BinaryIO] = None
-        self.connections: dict[int, Connection] = {}
+        self.connections: list[Connection] = []
         self.indexes: dict[int, list[IndexData]]
         self.chunk_infos: list[ChunkInfo] = []
         self.chunks: dict[int, Chunk] = {}
@@ -384,7 +384,7 @@ class Reader:
 
             self.bio.seek(index_pos)
             try:
-                self.connections = dict(self.read_connection() for _ in range(conn_count))
+                self.connections = [self.read_connection() for _ in range(conn_count)]
                 self.chunk_infos = [self.read_chunk_info() for _ in range(chunk_count)]
             except ReaderError as err:
                 raise ReaderError(f'Bag index looks damaged: {err.args}') from None
@@ -402,14 +402,15 @@ class Reader:
             self.indexes = {
                 cid: list(heapq.merge(*x, key=lambda x: x.time)) for cid, x in indexes.items()
             }
-            assert all(self.indexes[x] for x in self.connections)
+            assert all(self.indexes[x.id] for x in self.connections)
 
-            for cid, connection in self.connections.items():
-                self.connections[cid] = Connection(
-                    *connection[0:5],
-                    len(self.indexes[cid]),
-                    *connection[6:],
-                )
+            self.connections = [
+                Connection(
+                    *x[0:5],
+                    len(self.indexes[x.id]),
+                    *x[6:],
+                ) for x in self.connections
+            ]
         except ReaderError:
             self.close()
             raise
@@ -445,7 +446,7 @@ class Reader:
         """Topic information."""
         topics = {}
         for topic, group in groupby(
-            sorted(self.connections.values(), key=lambda x: x.topic),
+            sorted(self.connections, key=lambda x: x.topic),
             key=lambda x: x.topic,
         ):
             connections = list(group)
@@ -462,7 +463,7 @@ class Reader:
             )
         return topics
 
-    def read_connection(self) -> tuple[int, Connection]:
+    def read_connection(self) -> Connection:
         """Read connection record from current position."""
         assert self.bio
         header = Header.read(self.bio, RecordType.CONNECTION)
@@ -477,7 +478,7 @@ class Reader:
         callerid = header.get_string('callerid') if 'callerid' in header else None
         latching = int(header.get_string('latching')) if 'latching' in header else None
 
-        return conn, Connection(
+        return Connection(
             conn,
             topic,
             normalize_msgtype(typ),
@@ -593,7 +594,9 @@ class Reader:
             raise ReaderError('Rosbag is not open.')
 
         if not connections:
-            connections = self.connections.values()
+            connections = self.connections
+
+        connmap = {x.id: x for x in self.connections}
 
         indexes = [self.indexes[x.id] for x in connections]
         for entry in heapq.merge(*indexes):
@@ -624,7 +627,7 @@ class Reader:
                 raise ReaderError('Expected to find message data.')
 
             data = read_bytes(chunk, read_uint32(chunk))
-            connection = self.connections[header.get_uint32('conn')]
+            connection = connmap[header.get_uint32('conn')]
             assert entry.time == header.get_time('time')
             yield connection, entry.time, data
 

@@ -143,11 +143,11 @@ class AnyReader:
             typs: dict[str, Any] = {}
             for reader in self.readers:
                 assert isinstance(reader, Reader1)
-                for connection in reader.connections.values():
+                for connection in reader.connections:
                     typs.update(get_types_from_msg(connection.msgdef, connection.msgtype))
             register_types(typs, self.typestore)
 
-        self.connections = [y for x in self.readers for y in x.connections.values()]
+        self.connections = [y for x in self.readers for y in x.connections]
         self.isopen = True
 
     def close(self) -> None:

@@ -20,7 +20,7 @@ def process_bag(src: Path) -> None:
     """
     with Reader(src) as reader:
         typs = {}
-        for conn in reader.connections.values():
+        for conn in reader.connections:
             typs.update(get_types_from_msg(conn.msgdef, conn.msgtype))
         register_types(typs)
 

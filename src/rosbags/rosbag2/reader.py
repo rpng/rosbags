@@ -136,8 +136,8 @@ class Reader:
             if missing := [x for x in self.paths if not x.exists()]:
                 raise ReaderError(f'Some database files are missing: {[str(x) for x in missing]!r}')
 
-            self.connections = {
-                idx + 1: Connection(
+            self.connections = [
+                Connection(
                     id=idx + 1,
                     topic=x['topic_metadata']['name'],
                     msgtype=x['topic_metadata']['type'],
@@ -150,9 +150,9 @@ class Reader:
                     ),
                     owner=self,
                 ) for idx, x in enumerate(self.metadata['topics_with_message_count'])
-            }
+            ]
             noncdr = {
-                fmt for x in self.connections.values() if isinstance(x.ext, ConnectionExtRosbag2)
+                fmt for x in self.connections if isinstance(x.ext, ConnectionExtRosbag2)
                 if (fmt := x.ext.serialization_format) != 'cdr'
             }
             if noncdr:
@@ -209,10 +209,7 @@ class Reader:
     @property
     def topics(self) -> dict[str, TopicInfo]:
         """Topic information."""
-        return {
-            x.topic: TopicInfo(x.msgtype, x.msgdef, x.msgcount, [x])
-            for x in self.connections.values()
-        }
+        return {x.topic: TopicInfo(x.msgtype, x.msgdef, x.msgcount, [x]) for x in self.connections}
 
     def messages(  # pylint: disable=too-many-locals
         self,
@@ -278,7 +275,7 @@ class Reader:
 
                 cur.execute('SELECT name,id FROM topics')
                 connmap: dict[int, Connection] = {
-                    row[1]: next((x for x in self.connections.values() if x.topic == row[0]),
+                    row[1]: next((x for x in self.connections if x.topic == row[0]),
                                  None)  # type: ignore
                     for row in cur
                 }

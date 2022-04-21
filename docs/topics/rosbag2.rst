@@ -52,8 +52,8 @@ Instances of the :py:class:`Reader <rosbags.rosbag2.Reader>` class are used to r
 
    # create reader instance and open for reading
    with Reader('/home/ros/rosbag_2020_03_24') as reader:
-       # topic and msgtype information is available on .connections dict
-       for connection in reader.connections.values():
+       # topic and msgtype information is available on .connections list
+       for connection in reader.connections:
            print(connection.topic, connection.msgtype)
 
        # iterate over messages
@@ -63,7 +63,7 @@ Instances of the :py:class:`Reader <rosbags.rosbag2.Reader>` class are used to r
                print(msg.header.frame_id)
 
        # messages() accepts connection filters
-       connections = [x for x in reader.connections.values() if x.topic == '/imu_raw/Imu']
+       connections = [x for x in reader.connections if x.topic == '/imu_raw/Imu']
        for connection, timestamp, rawdata in reader.messages(connections=connections):
            msg = deserialize_cdr(rawdata, connection.msgtype)
            print(msg.header.frame_id)

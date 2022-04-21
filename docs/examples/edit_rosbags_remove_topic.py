@@ -22,7 +22,7 @@ def remove_topic(src: Path, dst: Path, topic: str) -> None:
     """
     with Reader(src) as reader, Writer(dst) as writer:
         conn_map = {}
-        for conn in reader.connections.values():
+        for conn in reader.connections:
             if conn.topic == topic:
                 continue
             ext = cast(ConnectionExtRosbag2, conn.ext)
