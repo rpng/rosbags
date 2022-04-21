@@ -44,6 +44,14 @@ if TYPE_CHECKING:
         message_count: int
         topic_metadata: TopicMetadata
 
+    class FileInformation(TypedDict):
+        """Per file metadata."""
+
+        path: str
+        starting_time: StartingTime
+        duration: Duration
+        message_count: int
+
     class Metadata(TypedDict):
         """Rosbag2 metadata file."""
 
@@ -56,6 +64,7 @@ if TYPE_CHECKING:
         compression_format: str
         compression_mode: str
         topics_with_message_count: list[TopicWithMessageCount]
+        files: list[FileInformation]
 
 
 class ReaderError(Exception):
@@ -99,6 +108,8 @@ class Reader:
         - Version 2: Changed field sizes in C++ implementation.
         - Version 3: Added compression.
         - Version 4: Added QoS metadata to topics, changed relative file paths
+        - Version 5: Added per file metadata
+
     """
 
     def __init__(self, path: Union[Path, str]):
@@ -125,7 +136,7 @@ class Reader:
 
         try:
             self.metadata: Metadata = dct['rosbag2_bagfile_information']
-            if (ver := self.metadata['version']) > 4:
+            if (ver := self.metadata['version']) > 5:
                 raise ReaderError(f'Rosbag2 version {ver} not supported; please report issue.')
             if storageid := self.metadata['storage_identifier'] != 'sqlite3':
                 raise ReaderError(
@@ -160,6 +171,8 @@ class Reader:
 
             if self.compression_mode and (cfmt := self.compression_format) != 'zstd':
                 raise ReaderError(f'Compression format {cfmt!r} is not supported.')
+
+            self.files: list[FileInformation] = self.metadata.get('files', [])[:]
         except KeyError as exc:
             raise ReaderError(f'A metadata key is missing {exc!r}.') from None
 

@@ -233,7 +233,7 @@ class Writer:  # pylint: disable=too-many-instance-attributes
 
         metadata: dict[str, Metadata] = {
             'rosbag2_bagfile_information': {
-                'version': 4,
+                'version': 5,
                 'storage_identifier': 'sqlite3',
                 'relative_file_paths': [self.dbpath.name],
                 'duration': {
@@ -256,6 +256,18 @@ class Writer:  # pylint: disable=too-many-instance-attributes
                 ],
                 'compression_format': self.compression_format,
                 'compression_mode': self.compression_mode,
+                'files': [
+                    {
+                        'path': self.dbpath.name,
+                        'starting_time': {
+                            'nanoseconds_since_epoch': start,
+                        },
+                        'duration': {
+                            'nanoseconds': duration,
+                        },
+                        'message_count': count,
+                    },
+                ],
             },
         }
         with self.metapath.open('w') as metafile:
