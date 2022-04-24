@@ -3,6 +3,22 @@
 Changes
 =======
 
+0.9.10 - 2022-05-04
+-------------------
+- Add support for multiple type stores
+- Document which types are supported out of the box `#21`_
+- Unify Connection and TopicInfo objects across rosbag1 and rosbag2
+- Add experimental all-in-one reader for rosbag1, split rosbag1, and rosbag2
+- Convert reader and writer .connection attribute from dict to list
+- Add support for rosbag2 version 5 metadata `#18`_
+- Speed up opening of rosbag1 files
+- Fix serialization of empty message sequences `#23`_
+
+.. _#18: https://gitlab.com/ternaris/rosbags/issues/18
+.. _#21: https://gitlab.com/ternaris/rosbags/issues/21
+.. _#23: https://gitlab.com/ternaris/rosbags/issues/23
+
+
 0.9.9 - 2022-01-10
 ------------------
 - Fix documentation code samples `#15`_
