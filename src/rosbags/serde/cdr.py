@@ -133,7 +133,8 @@ def generate_getsize_cdr(fields: list[Field]) -> tuple[CDRSerSize, int]:
                 lines.append(f'  val = message.{fieldname}')
                 if subdesc.args.size_cdr:
                     if aligned < anext_before <= anext_after:
-                        lines.append(f'  pos = (pos + {anext_before} - 1) & -{anext_before}')
+                        lines.append('  if len(val):')
+                        lines.append(f'    pos = (pos + {anext_before} - 1) & -{anext_before}')
                     lines.append('  for _ in val:')
                     if anext_before > anext_after:
                         lines.append(f'    pos = (pos + {anext_before} - 1) & -{anext_before}')
@@ -144,7 +145,8 @@ def generate_getsize_cdr(fields: list[Field]) -> tuple[CDRSerSize, int]:
                         f'  func = get_msgdef("{subdesc.args.name}", typestore).getsize_cdr',
                     )
                     if aligned < anext_before <= anext_after:
-                        lines.append(f'  pos = (pos + {anext_before} - 1) & -{anext_before}')
+                        lines.append('  if len(val):')
+                        lines.append(f'    pos = (pos + {anext_before} - 1) & -{anext_before}')
                     lines.append('  for item in val:')
                     if anext_before > anext_after:
                         lines.append(f'    pos = (pos + {anext_before} - 1) & -{anext_before}')
