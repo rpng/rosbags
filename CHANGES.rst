@@ -3,6 +3,11 @@
 Changes
 =======
 
+0.9.11 - 2022-05-17
+-------------------
+- Report start_time and end_time on empty bags
+
+
 0.9.10 - 2022-05-04
 -------------------
 - Add support for multiple type stores
