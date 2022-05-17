@@ -436,17 +436,17 @@ class Reader:
     @property
     def duration(self) -> int:
         """Duration in nanoseconds between earliest and latest messages."""
-        return self.end_time - self.start_time
+        return self.end_time - self.start_time if self.chunk_infos else 0
 
     @property
     def start_time(self) -> int:
         """Timestamp in nanoseconds of the earliest message."""
-        return min(x.start_time for x in self.chunk_infos)
+        return min(x.start_time for x in self.chunk_infos) if self.chunk_infos else 2**63 - 1
 
     @property
     def end_time(self) -> int:
         """Timestamp in nanoseconds after the latest message."""
-        return max(x.end_time for x in self.chunk_infos)
+        return max(x.end_time for x in self.chunk_infos) if self.chunk_infos else 0
 
     @property
     def message_count(self) -> int:

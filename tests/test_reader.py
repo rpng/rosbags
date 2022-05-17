@@ -55,6 +55,22 @@ rosbag2_bagfile_information:
   compression_mode: {compression_mode}
 """
 
+METADATA_EMPTY = """
+rosbag2_bagfile_information:
+  version: 4
+  storage_identifier: sqlite3
+  relative_file_paths:
+    - db.db3
+  duration:
+    nanoseconds: 0
+  starting_time:
+    nanoseconds_since_epoch: 0
+  message_count: 0
+  topics_with_message_count: []
+  compression_format: ""
+  compression_mode: ""
+"""
+
 
 @pytest.fixture(params=['none', 'file', 'message'])
 def bag(request: SubRequest, tmp_path: Path) -> Path:
@@ -115,6 +131,21 @@ def bag(request: SubRequest, tmp_path: Path) -> Path:
         dbpath.unlink()
 
     return tmp_path
+
+
+def test_empty_bag(tmp_path: Path) -> None:
+    """Test bags with broken fs layout."""
+    (tmp_path / 'metadata.yaml').write_text(METADATA_EMPTY)
+    dbpath = tmp_path / 'db.db3'
+    dbh = sqlite3.connect(dbpath)
+    dbh.executescript(Writer.SQLITE_SCHEMA)
+
+    with Reader(tmp_path) as reader:
+        assert reader.message_count == 0
+        assert reader.start_time == 2**63 - 1
+        assert reader.end_time == 0
+        assert reader.duration == 0
+        assert not list(reader.messages())
 
 
 def test_reader(bag: Path) -> None:

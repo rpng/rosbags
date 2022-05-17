@@ -202,6 +202,10 @@ def test_reader(tmp_path: Path) -> None:  # pylint: disable=too-many-statements
     write_bag(bag, create_default_header())
     with Reader(bag) as reader:
         assert reader.message_count == 0
+        assert reader.start_time == 2**63 - 1
+        assert reader.end_time == 0
+        assert reader.duration == 0
+        assert not list(reader.messages())
 
     # empty bag, explicit encryptor
     bag = tmp_path / 'test.bag'

@@ -191,17 +191,18 @@ class Reader:
     def duration(self) -> int:
         """Duration in nanoseconds between earliest and latest messages."""
         nsecs: int = self.metadata['duration']['nanoseconds']
-        return nsecs + 1
+        return nsecs + 1 if self.message_count else 0
 
     @property
     def start_time(self) -> int:
         """Timestamp in nanoseconds of the earliest message."""
-        return self.metadata['starting_time']['nanoseconds_since_epoch']
+        nsecs: int = self.metadata['starting_time']['nanoseconds_since_epoch']
+        return nsecs if self.message_count else 2**63 - 1
 
     @property
     def end_time(self) -> int:
         """Timestamp in nanoseconds after the latest message."""
-        return self.start_time + self.duration
+        return self.start_time + self.duration if self.message_count else 0
 
     @property
     def message_count(self) -> int:
