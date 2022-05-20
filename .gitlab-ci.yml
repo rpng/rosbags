@@ -11,14 +11,15 @@ test:
     - venv/bin/python -m pip install -r requirements-dev.txt
     - venv/bin/python -m pip install -e .[dev]
     - venv/bin/python -m pytest
-    - venv/bin/python -m coverage xml
     - venv/bin/sphinx-build docs public
   coverage: '/\d+\%\s*$/'
   artifacts:
     paths:
       - public
     reports:
-      cobertura: coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
       junit: report.xml
 
 
